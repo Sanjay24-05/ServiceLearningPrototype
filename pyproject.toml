@@ -1,0 +1,9 @@
+[project]
+name = "slideproof"
+version = "0.1.0"
+description = "Checks .pptx slide layouts for blind screen-reader users"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["soffice: needs LibreOffice"]
