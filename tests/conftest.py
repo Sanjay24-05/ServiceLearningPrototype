@@ -46,3 +46,12 @@ def tiny_deck(tmp_path):
         prs.save(path)
         return path
     return make
+
+
+def pytest_collection_modifyitems(config, items):
+    from slideproof.render.soffice import find_soffice
+    if find_soffice() is None:
+        skip = pytest.mark.skip(reason="LibreOffice not installed")
+        for item in items:
+            if "soffice" in item.keywords:
+                item.add_marker(skip)
