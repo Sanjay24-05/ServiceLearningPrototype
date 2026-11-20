@@ -1,7 +1,7 @@
 """Ground-truth loading and matching for the demo deck.
 
-`expected` rows use 1-based slide numbers; findings carry a 0-based
-`slide_index`. Findings/DeckModel are duck-typed (no imports).
+`expected` rows and findings' `slide_index` are both 1-based;
+Findings/DeckModel are duck-typed (no imports).
 """
 from __future__ import annotations
 
@@ -26,7 +26,8 @@ def match(findings, deck, expected):
     tp, fp = [], []
     for f in findings:
         names = [deck.element(eid).name for eid in f.element_ids]
-        k = _key(f.slide_index + 1, f.check_id, names)
+        # both slide numbers are 1-based
+        k = _key(f.slide_index, f.check_id, names)
         if remaining.get(k):
             remaining[k].pop()
             tp.append(f)
