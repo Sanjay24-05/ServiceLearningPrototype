@@ -25,9 +25,14 @@ def pull_on_slide(frame: Rect, bbox: Rect, slide: Rect, rotated: bool,
 
 
 def restore_proportions(frame: Rect, native_aspect: float) -> Rect:
+    """Fit the native aspect ratio inside the current frame.
+
+    The centre is kept and the stretched dimension is shrunk, so the result
+    always lies inside the original frame: the footprint can only shrink.
+    """
     cx, cy = frame.center
-    if frame.w >= frame.h:
-        w, h = frame.w, round(frame.w / native_aspect)
-    else:
+    w, h = frame.w, round(frame.w / native_aspect)
+    if h > frame.h:
         w, h = round(frame.h * native_aspect), frame.h
+    w, h = min(w, frame.w), min(h, frame.h)
     return Rect(round(cx - w / 2), round(cy - h / 2), w, h)

@@ -1,6 +1,7 @@
 """C1: element extends past the slide edge."""
 from __future__ import annotations
 
+from slideproof.checks.distortion import f2_fix
 from slideproof.findings import Finding, Fix
 from slideproof.fixes.geometry import pull_on_slide
 
@@ -23,7 +24,8 @@ def check_offslide(deck, render=None) -> list[Finding]:
                 continue
             has_text = bool(e.text and e.text.strip())
             severity = "visible" if outside >= 0.10 else "minor"
-            if not has_text and e.kind in ("picture", "shape"):
+            empty_text = e.kind in ("textbox", "body", "title") and not e.filled
+            if not has_text and (e.kind in ("picture", "shape") or empty_text):
                 if visible >= 0.5:
                     continue
                 severity = "minor"
@@ -34,7 +36,9 @@ def check_offslide(deck, render=None) -> list[Finding]:
                 if amount > 0:
                     edges[name] = amount / size
             fix = None
-            if e.group_id is None:
+            # C4's F2 already carries the element back on-slide; offering F1
+            # as well would overwrite it and get rolled back.
+            if e.group_id is None and e.fixable and f2_fix(e, slide) is None:
                 res = pull_on_slide(e.frame, b, slide, rotated=e.rotation % 360 != 0)
                 if res:
                     frame, scaled = res

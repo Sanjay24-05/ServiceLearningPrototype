@@ -45,6 +45,7 @@ class Element:
     image: ImageInfo | None = None
     placeholder_type: str | None = None
     group_id: str | None = None
+    fixable: bool = True  # False when no fix may be offered (e.g. duplicate shape id)
 
 
 @dataclass

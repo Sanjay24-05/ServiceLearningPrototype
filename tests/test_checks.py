@@ -1,3 +1,4 @@
+import pytest
 from tests.groundtruth import load_expected, match
 from slideproof.loader import load_deck
 from slideproof.checks import run_checks
@@ -48,6 +49,17 @@ def test_pull_on_slide_rotated_needing_scale_returns_none():
     big = Rect(0, 0, inches(20), inches(5))
     assert pull_on_slide(big, big, SLIDE, rotated=True) is None
 
-def test_restore_proportions_keeps_centre_and_larger_side():
+def test_restore_proportions_keeps_centre_and_shrinks_stretched_side():
     r = restore_proportions(Rect(0, 0, 1600, 600), 800 / 600)
-    assert r.w == 1600 and r.h == 1200 and r.center == (800, 300)
+    assert r.w == 800 and r.h == 600 and r.center == (800, 300)
+    tall = restore_proportions(Rect(0, 0, 600, 1600), 800 / 600)
+    assert tall.w == 600 and tall.h == 450 and tall.center == (300, 800)
+
+
+@pytest.mark.parametrize("frame,aspect", [
+    (Rect(100, 50, 1600, 600), 4 / 3), (Rect(10, 10, 600, 1600), 4 / 3),
+    (Rect(0, 0, 1000, 999), 1.0), (Rect(5, 7, 1001, 333), 0.37)])
+def test_restore_proportions_result_inside_original_frame(frame, aspect):
+    r = restore_proportions(frame, aspect)
+    assert frame.contains(r) and r.w * r.h <= frame.w * frame.h
+    assert abs(r.w / r.h - aspect) < 0.01
