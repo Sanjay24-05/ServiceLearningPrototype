@@ -18,7 +18,10 @@ document.getElementById("top").focus();
 <script>
 document.getElementById("top").focus();
 </script>
-<p>{{ ex.applied|length|plural("fix", "fixes") }} applied. {{ ex.resolved|plural("problem") }} resolved. {{ ex.new_visible|plural("new problem") }}.</p>
+<p>{{ ex.applied|length|plural("fix", "fixes") }} applied. {{ ex.resolved|plural("problem") }} resolved. {{ ex.new_visible|plural("new problem") }} among the problems this version checks.</p>
+{% if not ex.output and not rolled %}
+<p>No corrected copy was made because no fix could be applied.</p>
+{% endif %}
 {% if rolled %}
 <h2>Fixes that could not be applied safely</h2>
 <ul>

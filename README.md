@@ -20,6 +20,9 @@ Local tool that checks .pptx slide layouts for blind screen-reader users
 `python -m slideproof` starts the tool at http://127.0.0.1:8765/ and opens it
 in your browser.
 
+Uploaded decks and corrected copies are kept in `%TEMP%\slideproof` while
+you work. That folder is cleared each time the app starts.
+
 ## Test
 
 `python -m pytest`

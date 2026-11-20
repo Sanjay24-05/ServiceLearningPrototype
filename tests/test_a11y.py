@@ -14,10 +14,9 @@ NAV_TIMEOUT = 120_000
 
 
 @pytest.fixture
-def live_server(tmp_path):
+def live_server(tmp_path, monkeypatch):
     import uvicorn
-    old = os.environ.get("SOFFICE_PATH")
-    os.environ["SOFFICE_PATH"] = str(tmp_path / "missing-soffice.exe")
+    monkeypatch.setenv("SOFFICE_PATH", str(tmp_path / "missing-soffice.exe"))
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
@@ -25,20 +24,16 @@ def live_server(tmp_path):
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port,
                                            log_level="warning"))
     t = threading.Thread(target=server.run, daemon=True)
-    t.start()
-    end = time.time() + 20
-    while not server.started and time.time() < end:
-        time.sleep(0.05)
-    assert server.started, "uvicorn did not start"
     try:
+        t.start()
+        end = time.time() + 20
+        while not server.started and time.time() < end:
+            time.sleep(0.05)
+        assert server.started, "uvicorn did not start"
         yield f"http://127.0.0.1:{port}"
     finally:
         server.should_exit = True
         t.join(timeout=15)
-        if old is None:
-            os.environ.pop("SOFFICE_PATH", None)
-        else:
-            os.environ["SOFFICE_PATH"] = old
 
 
 @pytest.fixture
@@ -98,9 +93,8 @@ def test_report_heading_outline(live_server, demo_deck, page):
     name = demo_deck[0].name
     assert heads[0] == ["h1", f"Report for {name}"]
     assert heads[1] == ["h2", "Visible problems (2)"]
-    # Findings are ranked by priority, not slide order, so check both
-    # slides appear as h3 headings without fixing which comes first.
+    # Ranking is deterministic (spec 7.3): the stretched team photo on
+    # slide 4 outranks the agenda box on slide 2.
     assert [h[0] for h in heads[2:4]] == ["h3", "h3"]
-    assert sorted(h[1].split(",")[0] for h in heads[2:4]) == [
-        "Slide 2", "Slide 4"]
+    assert [h[1].split(",")[0] for h in heads[2:4]] == ["Slide 4", "Slide 2"]
     assert heads[-1] == ["h2", "Apply fixes"]
