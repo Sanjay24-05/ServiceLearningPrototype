@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% set v = rep.visible|length %}
+{% set m = rep.minor|length %}
+{% macro finding_list(items) %}
+{% for it in items %}
+<section aria-labelledby="{{ it.f.id }}">
+<h3 id="{{ it.f.id }}">{{ it.title }}</h3>
+<p>{{ it.d.full }}</p>
+{% if it.f.fix %}
+<fieldset><legend>Fix for this problem</legend>
+<input type="checkbox" name="fix" value="{{ it.f.fix.fix_id }}" id="fix-{{ it.f.id }}"{% if it.f.fix.safety == "safe" %} checked{% endif %}>
+<label for="fix-{{ it.f.id }}">{{ it.d.fix_label }}</label>
+</fieldset>
+{% else %}
+<p>No automatic fix for this one.</p>
+{% endif %}
+</section>
+{% endfor %}
+{% endmacro %}
+{% block title %}{{ run.filename }} – {{ v|plural("visible problem") }} – Slide Proof{% endblock %}
+{% block content %}
+<h1 tabindex="-1" id="top">Report for {{ run.filename }}</h1>
+<script>
+document.getElementById("top").focus();
+</script>
+{% if v == 0 and m == 0 %}
+<p>{{ rep.slides_checked }} slides checked. No problems found.</p>
+{% else %}
+<p>{{ rep.slides_checked }} slides checked. {{ v|plural("visible problem") }} on {{ rep.slides_with_visible|plural("slide") }}, {{ m }} minor.</p>
+{% endif %}
+{% if note %}<p>{{ note }}</p>{% endif %}
+<form method="post" action="/runs/{{ run.id }}/export">
+{% if v %}
+<h2>Visible problems ({{ v }})</h2>
+{{ finding_list(visible) }}
+{% endif %}
+{% if m %}
+<h2>Minor polish ({{ m }})</h2>
+{{ finding_list(minor) }}
+{% endif %}
+<h2>Apply fixes</h2>
+<p>Selected fixes are applied to a copy. Your original file is not changed.</p>
+<button>Create corrected copy</button>
+</form>
+{% endblock %}

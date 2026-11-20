@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Checking {{ run.filename }} – Slide Proof{% endblock %}
+{% block content %}
+<h1>Checking {{ run.filename }}</h1>
+{% if snap.state == "error" %}
+<p role="alert">{{ snap.message }}</p>
+<p><a href="/">Check another file</a></p>
+{% else %}
+<p role="status" id="status">{{ snap.message }}</p>
+<noscript><p><a href="/runs/{{ run.id }}/{{ 'result' if run.export else 'report' }}">Show the report when ready</a></p></noscript>
+<script src="/static/progress.js" data-status-url="/runs/{{ run.id }}/status"></script>
+{% endif %}
+{% endblock %}
