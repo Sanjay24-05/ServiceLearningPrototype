@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Check slide layout – Slide Proof{% endblock %}
+{% block content %}
+<h1>Check slide layout</h1>
+<p>Your file stays on this computer. Nothing is uploaded to the internet.</p>
+{% if problems %}
+<h2>Before you start</h2>
+<ul>
+{% for p in problems %}<li>{{ p }}</li>
+{% endfor %}</ul>
+{% endif %}
+<form method="post" action="/check" enctype="multipart/form-data">
+<label for="file">PowerPoint file (.pptx)</label>
+<input id="file" name="file" type="file" accept=".pptx" required>
+<button>Check slides</button>
+</form>
+{% endblock %}
