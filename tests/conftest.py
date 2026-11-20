@@ -55,3 +55,13 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "soffice" in item.keywords:
                 item.add_marker(skip)
+
+
+@pytest.fixture
+def make_finding():
+    from slideproof.findings import Finding
+
+    def make(check_id, slide_index, eid, severity, magnitude):
+        return Finding(check_id, slide_index, slide_index, (eid,), severity,
+                       "definite", magnitude, {}, fix=None)
+    return make

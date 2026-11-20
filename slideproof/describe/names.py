@@ -1,0 +1,37 @@
+"""Spoken labels for elements."""
+from __future__ import annotations
+
+
+def first_words(text: str, n: int = 6) -> str:
+    words = text.split()
+    out = " ".join(words[:n])
+    return out + "…" if len(words) > n else out
+
+
+def _has_text(el) -> bool:
+    return bool(el.text and el.text.strip())
+
+
+def element_label(el, slide) -> str:
+    kind = el.kind
+    if kind == "title":
+        return "the title"
+    if kind in ("body", "textbox"):
+        return f'text box "{first_words(el.text or "")}"'
+    if kind == "picture":
+        alt = (el.image.alt or "").strip() if el.image else ""
+        name = alt or (el.image.filename if el.image else None)
+        if name:
+            return f'picture "{name}"'
+        pics = [e for e in slide.elements if e.kind == "picture"]
+        return f"picture {pics.index(el) + 1}"
+    if kind == "shape":
+        if _has_text(el):
+            return f'shape "{first_words(el.text)}"'
+        shapes = [e for e in slide.elements if e.kind == "shape" and not _has_text(e)]
+        return f"shape {shapes.index(el) + 1}"
+    if kind == "table":
+        return "table"
+    if kind == "chart":
+        return "chart"
+    return "object"
