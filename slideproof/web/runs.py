@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import threading
 import uuid
 from dataclasses import dataclass
@@ -28,6 +29,7 @@ class Run:
     analysis: Analysis | None = None
     export: ExportResult | None = None
     error: str | None = None
+    job_active: bool = False
 
 
 class RunStore:
@@ -51,11 +53,19 @@ class RunStore:
             return self._runs[run_id]
 
     def start(self, run: Run, fn: Callable[[Callable[[str], None]], str],
-              message: str = "Starting…") -> None:
-        """Run fn(progress) in a daemon thread; fn returns the next URL."""
+              message: str = "Starting…", clear_export: bool = False) -> bool:
+        """Run fn(progress) in a daemon thread; fn returns the next URL.
+
+        Returns False, starting nothing, if a job is already running for run.
+        """
         with self._lock:
+            if run.job_active:
+                return False
+            run.job_active = True
             run.state, run.message, run.next_url, run.error = (
                 "working", message, None, None)
+            if clear_export:
+                run.export = None
 
         def progress(msg: str) -> None:
             with self._lock:
@@ -71,8 +81,12 @@ class RunStore:
             else:
                 with self._lock:
                     run.state, run.next_url = "done", nxt
+            finally:
+                with self._lock:
+                    run.job_active = False
 
         threading.Thread(target=work, daemon=True).start()
+        return True
 
     def _fail(self, run: Run, msg: str) -> None:
         with self._lock:
@@ -82,6 +96,21 @@ class RunStore:
         with self._lock:
             return {"state": run.state, "message": run.message,
                     "next": run.next_url}
+
+
+def clear_runs(root: Path) -> None:
+    """Delete run folders left over from earlier sessions."""
+    root = Path(root)
+    if not root.is_dir():
+        return
+    for child in root.iterdir():
+        if child.is_dir():
+            shutil.rmtree(child, ignore_errors=True)
+        else:
+            try:
+                child.unlink()
+            except OSError:
+                pass
 
 
 _FONTS = (("Carlito", "Carlito"), ("Caladea", "Caladea"),

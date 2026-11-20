@@ -7,9 +7,12 @@ from fastapi import FastAPI, Form, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from slideproof.analysis import analyse
 from slideproof.describe import describe
+from slideproof.describe.coverage import (checked_sentence, plural,
+                                          unchecked_sentence)
 from slideproof.verify import export_and_verify
 from slideproof.web.runs import Run, RunStore, startup_check
 
@@ -18,13 +21,10 @@ MAX_BYTES = 50 * 1024 * 1024
 EXPIRED = "This check has expired. Check the file again."
 
 
-def plural(n: int, singular: str, plural_form: str | None = None) -> str:
-    """'1 problem' / '2 problems' (never a literal '(s)')."""
-    return f"{n} {singular if n == 1 else (plural_form or singular + 's')}"
-
-
-def create_app(runs_root: Path) -> FastAPI:
+def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
     app = FastAPI()
+    app.add_middleware(TrustedHostMiddleware,
+                       allowed_hosts=["127.0.0.1", "localhost", *extra_hosts])
     store = RunStore(Path(runs_root))
     templates = Jinja2Templates(directory=str(HERE / "templates"))
     templates.env.filters["plural"] = plural
@@ -72,7 +72,11 @@ def create_app(runs_root: Path) -> FastAPI:
             chunks.append(chunk)
         run = store.create(name)
         path = run.dir / "original" / name
-        path.write_bytes(b"".join(chunks))
+        try:
+            path.write_bytes(b"".join(chunks))
+        except OSError:
+            return error(request, "This file name can't be used. Rename the "
+                                  "file and try again.")
 
         def job(progress):
             run.analysis = analyse(path, run.dir, progress)
@@ -108,6 +112,8 @@ def create_app(runs_root: Path) -> FastAPI:
         rep = run.analysis.report
         return page(request, "report.html", run=run, rep=rep,
                     note=run.analysis.skipped_note,
+                    coverage=checked_sentence(),
+                    unchecked=unchecked_sentence(run.analysis.deck),
                     visible=items(run, rep.visible),
                     minor=items(run, rep.minor))
 
@@ -119,6 +125,9 @@ def create_app(runs_root: Path) -> FastAPI:
             return error(request, EXPIRED, 404)
         if run.analysis is None:
             return error(request, "This check is not finished yet.")
+        if store.snapshot(run)["state"] == "working":
+            return RedirectResponse(f"/runs/{run.id}/progress",
+                                    status_code=303)
         if not fix:
             return page(request, "result.html", run=run, none_selected=True)
         original = run.analysis
@@ -131,7 +140,7 @@ def create_app(runs_root: Path) -> FastAPI:
                                            progress)
             return f"/runs/{run.id}/result"
 
-        store.start(run, job, "Applying fixes…")
+        store.start(run, job, "Applying fixes…", clear_export=True)
         return RedirectResponse(f"/runs/{run.id}/progress", status_code=303)
 
     @app.get("/runs/{run_id}/result")

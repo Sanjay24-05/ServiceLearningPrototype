@@ -7,6 +7,7 @@ from pptx import Presentation
 from pptx.enum.dml import MSO_COLOR_TYPE, MSO_FILL
 from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
 from pptx.oxml.ns import qn
+from pptx.shapes.group import GroupShape
 
 from slideproof.model import DeckModel, Element, ImageInfo, RunStyle, SlideModel
 from slideproof.units import Rect, rotated_aabb
@@ -38,7 +39,7 @@ def load_deck(path: Path) -> DeckModel:
 
 def _load_slide(slide, index: int) -> SlideModel:
     sm = SlideModel(index=index, slide_id=slide.slide_id,
-                    hidden=slide._element.get("show") == "0", title_text=None)
+                    hidden=slide._element.get("show") in ("0", "false"), title_text=None)
     _walk(slide.shapes, [], None, sm, [0])
     return sm
 
@@ -68,14 +69,17 @@ def _apply(t, x, y, w, h):
 def _walk(shapes, transforms, group_id, sm: SlideModel, counter) -> None:
     """transforms: ancestor group transforms, outermost first."""
     for shape in shapes:
-        if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+        if isinstance(shape, GroupShape):
             t = _group_xfrm(shape)
             if t is None:
                 sm.skipped_shapes.append(shape.name)
                 continue
             _walk(shape.shapes, transforms + [t], f"s{sm.slide_id}-sh{shape.shape_id}", sm, counter)
             continue
-        vals = (shape.left, shape.top, shape.width, shape.height)
+        try:
+            vals = (shape.left, shape.top, shape.width, shape.height)
+        except Exception:
+            vals = (None,)
         if any(v is None for v in vals):
             sm.skipped_shapes.append(shape.name)
             continue
@@ -83,8 +87,21 @@ def _walk(shapes, transforms, group_id, sm: SlideModel, counter) -> None:
         for t in reversed(transforms):  # innermost first
             x, y, w, h = _apply(t, x, y, w, h)
         frame = Rect(x, y, w, h)
-        rotation = float(getattr(shape, "rotation", 0.0))
+        try:
+            rotation = float(getattr(shape, "rotation", 0.0))
+        except Exception:
+            rotation = 0.0
         kind, ph_type = _kind(shape)
+        image = None
+        if kind == "picture":
+            try:
+                image = _image_info(shape)
+            except Exception:  # linked or unreadable image
+                kind = "other"
+        eid = f"s{sm.slide_id}-sh{shape.shape_id}"
+        fixable = shape.shape_id not in sm_ids(sm)
+        if not fixable:
+            eid = f"{eid}-z{counter[0]}"
         text = None
         runs: list[RunStyle] = []
         if getattr(shape, "has_text_frame", False):
@@ -93,29 +110,40 @@ def _walk(shapes, transforms, group_id, sm: SlideModel, counter) -> None:
         if kind == "title" and sm.title_text is None:
             sm.title_text = text
         sm.elements.append(Element(
-            id=f"s{sm.slide_id}-sh{shape.shape_id}", slide_index=sm.index, slide_id=sm.slide_id,
+            id=eid, slide_index=sm.index, slide_id=sm.slide_id,
             shape_id=shape.shape_id, name=shape.name, kind=kind, frame=frame,
             bbox=rotated_aabb(frame, rotation), z=counter[0], rotation=rotation,
             filled=kind == "picture" or _is_filled(shape), text=text, runs=runs,
-            image=_image_info(shape) if kind == "picture" else None,
-            placeholder_type=ph_type, group_id=group_id))
+            image=image, placeholder_type=ph_type, group_id=group_id,
+            fixable=fixable))
         counter[0] += 1
 
 
+def sm_ids(sm: SlideModel) -> set[int]:
+    return {e.shape_id for e in sm.elements}
+
+
 def _kind(shape):
+    try:
+        return _kind_inner(shape)
+    except Exception:  # unrecognised shape type, linked picture, ...
+        return "other", None
+
+
+def _kind_inner(shape):
     if shape.is_placeholder:
         pt = shape.placeholder_format.type
         name = pt.name if pt is not None else None
         if pt in _TITLES:
             return "title", name
-        if hasattr(shape, "image"):
+        if shape._element.tag == qn("p:pic"):
             return "picture", name
         if getattr(shape, "has_table", False):
             return "table", name
         if getattr(shape, "has_chart", False):
             return "chart", name
         return "body", name
-    st = shape.shape_type
+    st = shape.shape_type  # may raise: caller treats the shape as "other"
     if st == MSO_SHAPE_TYPE.PICTURE:
         return "picture", None
     if st == MSO_SHAPE_TYPE.TEXT_BOX:

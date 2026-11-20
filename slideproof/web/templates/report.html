@@ -24,10 +24,14 @@
 document.getElementById("top").focus();
 </script>
 {% if v == 0 and m == 0 %}
-<p>{{ rep.slides_checked }} slides checked. No problems found.</p>
+<p>{{ rep.slides_checked|plural("slide") }} checked. No problems found.</p>
+{% elif v == 0 %}
+<p>{{ rep.slides_checked|plural("slide") }} checked. No visible problems. {{ m }} minor.</p>
 {% else %}
-<p>{{ rep.slides_checked }} slides checked. {{ v|plural("visible problem") }} on {{ rep.slides_with_visible|plural("slide") }}, {{ m }} minor.</p>
+<p>{{ rep.slides_checked|plural("slide") }} checked. {{ v|plural("visible problem") }} on {{ rep.slides_with_visible|plural("slide") }}, {{ m }} minor.</p>
 {% endif %}
+<p>{{ coverage }}</p>
+{% if unchecked %}<p>{{ unchecked }}</p>{% endif %}
 {% if note %}<p>{{ note }}</p>{% endif %}
 <form method="post" action="/runs/{{ run.id }}/export">
 {% if v %}

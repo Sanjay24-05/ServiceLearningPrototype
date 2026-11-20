@@ -321,7 +321,7 @@ h2  Apply fixes
 | Fix | For | Safety | Algorithm |
 |---|---|---|---|
 | F1 Pull back on-slide | C1 | **safe** | Translate the minimum distance needed to fit inside the slide with a 0.2-inch margin. If the element is larger than the slide area, scale it down, keeping its proportions, then translate |
-| F2 Restore proportions | C4 | **safe** | Keep the centre and the larger displayed dimension; recompute the other from the native (cropped) aspect ratio. If the result goes off-slide, apply F1 afterwards |
+| F2 Restore proportions | C4 | **safe** | Fit the native (cropped) aspect ratio inside the current frame: keep the centre and shrink the stretched dimension, so the footprint can only shrink and never covers neighbouring objects. If the frame was already off-slide, apply F1 afterwards |
 | F3 Match title position | C8 | **safe** | Set the title's left/top/width/height to the deck's dominant title geometry |
 | F4 Remove empty element | C10 (empty text box, no fill or outline) | **safe** | Delete the shape element from the slide XML |
 | F5 Use the deck's main font | C9 | confirm | Set the font name of the affected runs to the deck's dominant family; keep size and bold/italic |

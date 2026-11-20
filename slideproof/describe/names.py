@@ -17,6 +17,8 @@ def element_label(el, slide) -> str:
     if kind == "title":
         return "the title"
     if kind in ("body", "textbox"):
+        if not _has_text(el):
+            return "empty text box"
         return f'text box "{first_words(el.text or "")}"'
     if kind == "picture":
         alt = (el.image.alt or "").strip() if el.image else ""

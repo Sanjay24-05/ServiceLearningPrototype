@@ -39,7 +39,7 @@ def test_c4_description_demo(demo_deck):
     deck, f, d = _demo(demo_deck, "C4")
     assert d.headline == 'picture "Team photo" is stretched wider than its natural shape'
     assert "1.6 times as wide" in d.full
-    assert d.change_log.endswith("it is now taller and still centred.")
+    assert d.change_log.endswith("it is now narrower and still centred.")
 
 
 def test_short_form_under_90_chars_for_demo(demo_deck):
