@@ -105,3 +105,22 @@ def test_render_page_count_mismatch(monkeypatch, tmp_path, demo_deck):
     assert r.status == "failed"
     assert r.reason == "page count did not match slide count"
     assert r.slides == [None] * 8
+
+
+def test_convert_error_includes_log_tail(monkeypatch, tmp_path):
+    from slideproof.render import soffice as so
+
+    class FakePopen:
+        returncode = 3
+
+        def __init__(self, cmd, stdout=None, **kw):
+            stdout.write(b"boom: bad filter")
+            stdout.flush()
+
+        def wait(self, timeout=None):
+            return 3
+
+    monkeypatch.setattr(so.subprocess, "Popen", FakePopen)
+    with pytest.raises(RenderError, match="boom: bad filter"):
+        so.convert_to_pdf(Path("soffice"), tmp_path / "a.pptx",
+                          tmp_path / "out", tmp_path / "prof")
