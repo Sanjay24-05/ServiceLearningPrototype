@@ -47,6 +47,8 @@ def _line(node) -> str | None:
 
 
 def transcript(page) -> list[str]:
+    # page.accessibility is deprecated in newer Playwright; this relies on the
+    # pinned 1.47.
     snap = page.accessibility.snapshot(interesting_only=True)
     active = page.evaluate(
         "(() => { const e = document.activeElement;"

@@ -2,7 +2,7 @@
 
 ## Quick pass for sighted testers
 
-Use NVDA's Speech Viewer with the screen on (NVDA menu, Tools, Speech Viewer). Use only the keys H, Tab, Space and Enter. Compare what Speech Viewer shows with the expected transcripts in `tests/transcripts/` (`index.txt`, `report.txt`, `result.txt`). Those transcripts are produced automatically on every test run, so you only need to confirm three things by ear:
+Use NVDA's Speech Viewer with the screen on (NVDA menu, Tools, Speech Viewer). Use only the keys H, Tab, Space and Enter. Compare what Speech Viewer shows with the expected transcripts in `tests/transcripts/` (`index.txt`, `report.txt`, `result.txt`). Those transcripts are produced automatically on every test run, The transcripts are generated with LibreOffice disabled, so if LibreOffice is installed on your machine, the "LibreOffice was not found" line on the first page and the "skipped" note on the report will not appear; that is not a bug. You only need to confirm three things by ear:
 
 1. The announcements make sense when heard in order.
 2. Progress updates are neither spammy nor silent.
