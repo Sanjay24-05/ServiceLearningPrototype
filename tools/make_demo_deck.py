@@ -9,7 +9,7 @@ import sys
 from io import BytesIO
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
@@ -34,10 +34,46 @@ def _png(px, color):
     return buf
 
 
-def add_picture(slide, name, px, color, x, y, w, h, alt):
-    """x/y/w/h in inches."""
+def _face_png(px):
+    """Light background, big circle face, eyes, smile and stripes: a circle
+    visibly turns into an oval when the picture is stretched."""
+    w, h = px
+    img = Image.new("RGB", px, (0xE3, 0xF2, 0xFD))
+    d = ImageDraw.Draw(img)
+    for x in range(0, w, w // 10):
+        d.line([(x, 0), (x, h)], fill=(0xB0, 0xC4, 0xDE), width=3)
+    r = int(h * 0.4)
+    cx, cy = w // 2, h // 2
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(0xFF, 0xCC, 0x80),
+              outline=(0x4E, 0x34, 0x2E), width=8)
+    er = r // 9
+    for ex in (cx - r // 2, cx + r // 2):
+        d.ellipse([ex - er, cy - r // 3 - er, ex + er, cy - r // 3 + er],
+                  fill=(0x21, 0x21, 0x21))
+    d.arc([cx - r // 2, cy - r // 4, cx + r // 2, cy + r // 2], 20, 160,
+          fill=(0x21, 0x21, 0x21), width=10)
+    return img
+
+
+def _logo_png(px):
+    w, h = px
+    img = Image.new("RGB", px, (0xFF, 0xFF, 0xFF))
+    ImageDraw.Draw(img).ellipse([8, 8, w - 8, h - 8], fill=(0x2E, 0x7D, 0x32))
+    return img
+
+
+def _img_png(img):
+    buf = BytesIO()
+    img.save(buf, "PNG")
+    buf.seek(0)
+    return buf
+
+
+def add_picture(slide, name, px, color, x, y, w, h, alt, image=None):
+    """x/y/w/h in inches. `image` is an optional PIL image to use instead of a flat colour."""
     pic = slide.shapes.add_picture(
-        _png(px, color), inches(x), inches(y), inches(w), inches(h))
+        _img_png(image) if image is not None else _png(px, color),
+        inches(x), inches(y), inches(w), inches(h))
     pic.name = name
     pic._element.nvPicPr.cNvPr.set("descr", alt)
     return pic
@@ -88,7 +124,10 @@ def build_demo_deck(out_dir: Path) -> tuple[Path, Path]:
     s = prs.slides.add_slide(title_only)
     _title(s, "Agenda")
     add_text(s, "agenda-box", 10.13, 1.5, 4.0, 3.0,
-             ["Welcome", "Garden progress", "Budget", "Next steps"], size=24)
+             ["Welcome and introductions from our team",
+              "Garden progress since last spring",
+              "Budget and funding for next year",
+              "Next steps and volunteer sign-up"], size=24)
     row(2, "C1", ["agenda-box"], "visible", "F1")
 
     # 3: text overlapping a chart picture
@@ -105,9 +144,11 @@ def build_demo_deck(out_dir: Path) -> tuple[Path, Path]:
     s = prs.slides.add_slide(title_only)
     _title(s, "Our team")
     add_picture(s, "team-photo", (800, 600), (0x79, 0x55, 0x48),
-                2.5, 1.5, 8, 3.75, "Team photo")
+                2.5, 1.5, 8, 3.75, "Team photo",
+                image=_face_png((800, 600)))
     add_picture(s, "logo", (100, 100), (0x2E, 0x7D, 0x32),
-                11, 5.3, 2, 2, "Garden logo")
+                11, 5.3, 2, 2, "Garden logo",
+                image=_logo_png((100, 100)))
     row(4, "C4", ["team-photo"], "visible", "F2")
     row(4, "C5", ["logo"], "visible", None)
 

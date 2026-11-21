@@ -8,8 +8,8 @@ heading level 3: Slide 4, "Our team": picture "Team photo" is stretched wider th
 text: Picture "Team photo", in the centre, is shown 1.6 times as wide as its natural shape, so it looks distorted. Confidence: definite.
 text: Fix for this problem
 checkbox checked: Restore its natural shape, keeping it centred. Safe fix.
-heading level 3: Slide 2, "Agenda": text box "Welcome Garden progress Budget Next steps" sticks out past the right edge
-text: Text box "Welcome Garden progress Budget Next steps", in the middle right, sticks out past the right edge of the slide by about a fifth of its width. Part of it will be cut off when presented. Confidence: definite.
+heading level 3: Slide 2, "Agenda": text box "Welcome and introductions from our team…" sticks out past the right edge
+text: Text box "Welcome and introductions from our team…", in the middle right, sticks out past the right edge of the slide by about a fifth of its width. Part of it will be cut off when presented. Confidence: definite.
 text: Fix for this problem
 checkbox checked: Move it back onto the slide. Safe fix.
 heading level 2: Apply fixes
