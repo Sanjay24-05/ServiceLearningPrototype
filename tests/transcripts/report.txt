@@ -1,0 +1,17 @@
+focus: heading Report for demo_deck.pptx
+heading level 1: Report for demo_deck.pptx
+text: 8 slides checked. 2 visible problems on 2 slides, 0 minor.
+text: This version checks two things: objects that stick out past the slide edge, and stretched pictures. Overlap, text overflow, contrast, fonts and title position are not checked yet.
+text: Note: text overflow and contrast checks were skipped because LibreOffice is not installed.
+heading level 2: Visible problems (2)
+heading level 3: Slide 4, "Our team": picture "Team photo" is stretched wider than its natural shape
+text: Picture "Team photo", in the centre, is shown 1.6 times as wide as its natural shape, so it looks distorted. Confidence: definite.
+text: Fix for this problem
+checkbox checked: Restore its natural shape, keeping it centred. Safe fix.
+heading level 3: Slide 2, "Agenda": text box "Welcome and introductions from our team…" sticks out past the right edge
+text: Text box "Welcome and introductions from our team…", in the middle right, sticks out past the right edge of the slide by about a fifth of its width. Part of it will be cut off when presented. Confidence: definite.
+text: Fix for this problem
+checkbox checked: Move it back onto the slide. Safe fix.
+heading level 2: Apply fixes
+text: Selected fixes are applied to a copy. Your original file is not changed.
+button: Create corrected copy

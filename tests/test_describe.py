@@ -29,8 +29,8 @@ def _demo(demo_deck, check):
 
 def test_c1_description_demo(demo_deck):
     deck, f, d = _demo(demo_deck, "C1")
-    # Agenda text is exactly 6 words, so no ellipsis.
-    assert d.short == 'Slide 2: text box "Welcome Garden progress Budget Next steps" sticks out past the right edge'
+    # Label is the first 6 words plus an ellipsis.
+    assert d.short == 'Slide 2: text box "Welcome and introductions from our team…" sticks out past the right edge'
     assert "by about a fifth of its width" in d.full and "agenda-box" not in d.full
     assert d.fix_label == "Move it back onto the slide. Safe fix."
 

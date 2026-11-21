@@ -1,0 +1,8 @@
+focus: heading Corrected copy created
+heading level 1: Corrected copy created
+text: 2 fixes applied. 2 problems resolved. 0 new problems among the problems this version checks.
+heading level 2: Changes made
+text: Slide 4: picture "Team photo" restored to its natural shape; it is now narrower and still centred.
+text: Slide 2: text box "Welcome and introductions from our team…" moved back onto the slide.
+link: Download demo_deck (checked).pptx
+link: Check another file
