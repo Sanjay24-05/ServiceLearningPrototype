@@ -1,6 +1,6 @@
 # Slide Proof: "Mistake or on purpose?" model, and a presentable prototype
 
-**Design document · 2026-11-22 · Status: draft for approval**
+**Design document · 2026-11-22 · Status: draft for approval (revised after builder check; data approach B chosen by the user)**
 Builds on: `docs/superpowers/specs/2026-11-20-slide-layout-checker-design.md` (the main spec) and M0–M2 (merged or in PR on `m2-geometry`).
 
 ---
@@ -84,16 +84,35 @@ All features are computed from the existing model (`DeckModel`, `Element`, `Find
 | `rotated` | whether the element is rotated |
 | C2 only: `lower_is_text`, `upper_kind_*`, `upper_inside_lower` | relation between the two elements |
 
-### 5.3 Training data (generated locally, labelled automatically)
+### 5.3 Training data: fully synthetic (approach B, chosen by the user)
 
-- **Deliberate examples.** Run the checks on every installed LibreOffice template (23 today), the realistic corpus from `tools/make_test_decks.py`, and the demo deck's clean slides. Every C1/C2 finding these designer-made or clean decks produce is labelled **deliberate**.
-- **Mistake examples.** New script `tools/make_training_mistakes.py` takes the *same* decks and applies random, realistic perturbations:
-  - nudge a text box or picture past one edge by 10–60%;
-  - drag a picture over a text box (10–80% coverage);
-  - paste a box partly off the slide;
-  - duplicate and offset an object.
-  Each perturbation is labelled **mistake**, with a fixed random seed. Both classes come from the same decks, so the model learns the *pattern*, not which deck it came from.
-- **Balance.** Cap the number of examples per deck so one template can't dominate. Report class counts in the model card.
+**Why synthetic.** The 23 LibreOffice templates contain only 5 C1/C2 findings (all on one template) and 7 objects crossing a slide edge at all. That is too few deliberate examples to train or test on. The user chose to generate **both classes synthetically** for the prototype. The model card must say so plainly (§5.4).
+
+- **Generator.** New script `tools/make_training_decks.py` builds many varied decks with a fixed random seed. It reuses the realistic content of `tools/make_test_decks.py`: text, pictures, charts, tables; 16:9 and 4:3; Title Only, Title and Content, Section Header and Blank layouts.
+- **Deliberate patterns (label "deliberate").** Each is a common designer move, randomised in position, size and colour:
+  - **Bleeds:**
+    - a full-bleed photo;
+    - a banner or strip across the top or bottom running past the edge;
+    - a half-circle, half-donut or chart graphic cut by one edge;
+    - a corner badge or ribbon over a corner.
+  - **Repeated decoration:** a logo in the same corner on every slide; a footer bar on every slide.
+  - **Composition:** an icon built from stacked shapes; a caption band inside a photo; a picture frame behind a picture; text on a coloured panel.
+  - Each pattern is placed so that today's rules would produce a C1 or C2 *raw candidate* (§5.3a).
+- **Mistake patterns (label "mistake"):**
+  - a text box or picture nudged past one edge by 10–60%;
+  - a picture dragged over a text box (10–80% of the text covered);
+  - a pasted box partly off the slide;
+  - a duplicated object offset onto another;
+  - a resized picture spilling over the title.
+  - These are applied to the same generated decks, so both classes share slides, layouts and content.
+- **Avoiding "learning the generator".** Both classes are randomised over the *same* position, size, kind and colour ranges wherever the pattern allows. The model card lists every pattern and its parameter ranges, so a reader can judge what the model can and can't have learned.
+- **Real templates as a sanity check, not training data.** The 23 LibreOffice templates and the realistic corpus are **held out**. They are only used to check that the model doesn't move real mistakes and does move the Yellow Idea half-donut. Results are reported in the model card.
+
+### 5.3a What the model sees
+
+The model is trained on **raw candidates**: every element that crosses a slide edge by more than 2%, and every pair where an upper picture or filled shape covers at least 5% of a lower element's content. That is, C1/C2 *before* the decorative exemptions of main spec §7.2 (deliberate bleed, plain-shape artwork, caption inside a photo).
+
+At run time the exemptions stay exactly as they are (they are tested and safe). The model **only judges findings that survive them**. Training on the broader raw set gives it many more examples of each pattern; the exemptions remain a hard safety floor.
 
 ### 5.4 Training and evaluation
 
@@ -101,14 +120,24 @@ All features are computed from the existing model (`DeckModel`, `Element`, `Find
   - `slideproof/intent/model.joblib`
   - `slideproof/intent/features.json` (feature order and version)
   - `docs/ml/intent-model-card.md`
-- **Evaluation:** leave-one-template-out (grouped) cross-validation, so the score always comes from decks the model never saw.
+- **Evaluation:** grouped cross-validation by generated deck (5 folds), so the score always comes from decks the model never saw. A separate report on the held-out real templates and corpus (§5.3).
   - Metrics: precision, recall and F1 for "deliberate"; the confusion matrix; the calibration curve.
   - **Mistake recall is the key safety number:** the share of real mistakes *not* sent to "Probably intentional".
-- **Success criteria (both must hold on held-out decks):**
-  - At least 95% of synthetic mistakes stay in the main lists (classified "mistake").
-  - At least 50% of the findings on designer templates move to "Probably intentional".
-  - And the demo deck's planted mistakes all stay in the main lists (asserted in a test).
-- **Model card** (`docs/ml/intent-model-card.md`): purpose, data sources, labelling method, class counts, metrics, known limits (synthetic mistakes; LibreOffice templates as the stand-in for designer decks), and how to retrain.
+- **Success criteria.** Mistake recall comes first and always wins when the two conflict.
+  1. **Safety:** at least 95% of held-out synthetic mistakes stay in the main lists. Every planted mistake in the demo deck and the realistic corpus stays in the main lists (asserted in tests).
+  2. **Usefulness:** at least 50% of held-out synthetic deliberate patterns move to "Probably intentional" at the threshold that meets (1).
+  3. **Real-template check (reported, not required):** how many of Yellow Idea's 5 half-donut findings move. If fewer than 4 move, the result is reported honestly in the model card and the milestone can still ship.
+- **Model card** (`docs/ml/intent-model-card.md`) covers:
+  - purpose;
+  - **"All training data is synthetic"**, stated in the first paragraph;
+  - every pattern with its ranges;
+  - class counts;
+  - metrics with confusion matrix and calibration;
+  - held-out real-template results;
+  - known limits: it may have learned generator quirks; it is untested on real-world decks;
+  - how to retrain.
+- **Machine-readable metrics:** the script also writes `slideproof/intent/metrics.json`, which the "How it works" page reads.
+- **Versioning:** `features.json` records the feature list version and the scikit-learn version used. `scikit-learn` is pinned in `requirements.txt`. If the installed scikit-learn version differs, or the file fails to load, `judge()` returns findings unchanged and the report says "The 'probably intentional' judgement is unavailable in this setup." It never fails silently.
 
 ### 5.5 Using the prediction
 
@@ -116,7 +145,11 @@ All features are computed from the existing model (`DeckModel`, `Element`, `Find
   - `"intent_p"`: the probability that it's deliberate;
   - `"intent_reasons"`: up to two short reason codes.
   `analyse()` calls it after `run_checks` and before `prioritise`. If the model can't be loaded, it returns the findings unchanged and the report says "The 'probably intentional' judgement is unavailable."
-- **Threshold:** `intent_p ≥ 0.80`. The finding moves to a new **"Probably intentional"** tier, after "Minor polish".
+- **Pipeline placement:** `judge()` runs after `run_checks` and before `prioritise()`. `prioritise()` gains a third tier, `intentional`. Grouping (more than 5 of a check on one slide) happens **within** a tier, so a group never mixes intentional and non-intentional findings.
+- **Counting:** "Probably intentional" findings don't count as visible problems in the summary or the page title. The summary lists them separately.
+- **Fixes and verify:** they stay ordinary findings to the fix re-check (same keys). A fix offered for one is shown **unticked**, and applied only if the user ticks it.
+- **Relation to M4 "Mark as intentional":** that is the user's own decision and gets its own section, "Marked intentional", separate from the model's guesses.
+- **Threshold:** `intent_p ≥ 0.80`, unless the evaluation picks a stricter value to keep mistake recall at or above 95%. The finding moves to the new **"Probably intentional"** tier, after "Minor polish".
   - Its fix checkbox (if any) is **unchecked by default**.
   - It is never removed, and the user can still apply its fix.
   - The threshold is a constant in one place, tuned on the held-out evaluation so that mistake recall stays at or above 95%.
@@ -141,7 +174,8 @@ All features are computed from the existing model (`DeckModel`, `Element`, `Find
   - no-op when the model is missing;
   - never changes non-C1/C2 findings.
 - **Demo deck:** no planted mistake moves to "Probably intentional".
-- **Yellow Idea template:** at least 4 of its 5 half-donut findings move to "Probably intentional", given the shipped model. If this proves impossible, report it rather than tuning to the test.
+- **Yellow Idea template:** a test records how many of its 5 half-donut findings move. It asserts only that the number is reported in `metrics.json` (§5.4, criterion 3), never a tuned target.
+- **Version fallback:** a mismatched scikit-learn version in `features.json` produces the "unavailable" note and unchanged findings.
 - **Training script:** a smoke test (small subset, seconds) that it runs end to end and writes a model and a card.
 - **Transcripts and axe:** regenerated and passing with the new section.
 
@@ -159,22 +193,41 @@ Everything here must leave the screen-reader structure (headings, landmarks, for
 3. **Before/after view (for sighted viewers).**
    - On the result page, a collapsed `<details><summary>Show the changed slides</summary>` holds a side-by-side PNG for each changed slide, original left and corrected right.
    - Each image has alt text such as "Slide 4 before and after: the team photo is narrower and no longer stretched", built from the change log.
-   - Shown only when LibreOffice rendering is available.
+   - Shown only when LibreOffice rendering is available. The images come from slide PNGs the analysis and the fix re-check already render (the original run and the final verify attempt), so no extra rendering pass is needed. The side-by-side image is composed with Pillow.
 4. **"How it works" page.**
    - Linked from the footer of every page, titled `How Slide Proof works`.
    - Five short sections: what it checks; what "Probably intentional" means; the model's measured accuracy (read from the model card's numbers); privacy (everything stays on this computer); and what it can't do yet.
 5. **Demo script refresh.** Update `docs/testing/` and the main spec §10.2 demo script to include the model ("watch the half-donut move to Probably intentional") and the before/after view.
 
-## 7. Roadmap placement
+## 7. Roadmap placement and running in parallel with M3
 
-The main spec §14 gets two new milestones after M2 and before M3:
+The user wants the AI work to run **alongside** M3 and later milestones. The order:
 
-| Milestone | Effort | Deliverables | Exit criteria |
-|---|---|---|---|
-| **P Presentable** | 0.5 wk | Part B items 1–5 | Transcript and axe tests unchanged or extended; the demo runs from the button; the before/after view appears when LibreOffice is present |
-| **AI Intent model** | 1.5 wks | Part A: features, mistake generator, training script, model and card, `judge()`, report section, tests | §5.4 success criteria met and reported in the model card; NVDA pass of the new section; Yellow Idea case resolved |
+| Step | Effort | Runs | Deliverables | Exit criteria |
+|---|---|---|---|---|
+| **P Presentable** | 0.5 wk | **First, alone.** It restyles the shared page templates, so it goes before the parallel tracks to avoid conflicts | Part B items 1, 2 and 4 (style, demo button, "How it works" page without model numbers yet). Item 3, the before/after view, and item 5, the demo script, wait for the AI track | Transcript and axe tests unchanged; the demo runs from the button |
+| **AI Intent model** | 1.5 wks | **In parallel with M3**, in its own branch and worktree | Part A complete; Part B items 3 and 5; model numbers on the "How it works" page | §5.4 criteria 1–2 met and reported; criterion 3 reported; NVDA pass of the new section |
+| **M3 Render checks** | 1.5 wks | **In parallel with the AI track**, in its own branch and worktree | As main spec §14 | As main spec §14 |
+| M4, M5 | as planned | After both merge | As main spec §14 | As main spec §14 |
 
-M3–M5 keep their order afterwards. M4's "Mark as intentional" later becomes a source of real labels (future work).
+**Keeping the two parallel tracks apart.**
+
+*Files each track owns:*
+- **AI track:** a new package `slideproof/intent/`; new tools `make_training_decks.py` and `train_intent_model.py`; `docs/ml/`. It also makes small edits to `analysis.py` (one call to `judge()`), `prioritise.py` (the third tier), `describe/copy.py` (one sentence), `coverage.py`, and the report template (one new section).
+- **M3 track:** `render/`, `checks/content.py`, and new check modules. It also adds entries to `describe/copy.py`, `coverage.py` and the report template.
+
+*Shared contract, frozen before both start:*
+- `Finding.measurements` may carry `intent_p` and `intent_reasons`.
+- `Report` gains an `intentional` list.
+- The AI track adds that field and the section; M3 does not touch them.
+
+*Features independent of M3:*
+- The model's features (§5.2) use element geometry and `magnitude`. M3 changes how C2's coverage is measured (rendered text instead of the estimate), so C2 magnitudes shift.
+- The training script is re-run after M3 merges; it takes minutes. That re-run is part of the merge checklist, and its new metrics replace the old ones in the model card.
+
+*Merge order:*
+- Whichever track finishes first merges first.
+- The second rebases, re-runs the whole suite, and (if it's the AI track, or M3 landed after it) retrains.
 
 ## 8. Left to the builder
 
