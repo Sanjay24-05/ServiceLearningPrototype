@@ -17,7 +17,7 @@ def _elem(deck, name):
 def test_apply_f1_f2_to_copy(demo_deck, tmp_path):
     src = demo_deck[0]
     before = hashlib.sha256(src.read_bytes()).hexdigest()
-    fixes = [f.fix for f in run_checks(load_deck(src), None) if f.fix]
+    fixes = [f.fix for f in run_checks(load_deck(src), None) if f.fix and f.fix.kind in ("F1", "F2")]
     assert {f.kind for f in fixes} == {"F1", "F2"}
     out = tmp_path / "sub" / "demo (checked).pptx"
     applied = apply_fixes(src, out, fixes)
@@ -47,3 +47,21 @@ def test_set_frame_on_inherited_placeholder(demo_deck, tmp_path):
     assert _elem(load_deck(out), "slide-title").frame == new
     with pytest.raises(KeyError):
         set_frame(prs, title.slide_id, 99999, new)
+
+
+def test_f4_deletes_shape(demo_deck, tmp_path):
+    deck = load_deck(demo_deck[0])
+    f4 = [f.fix for f in run_checks(deck, None) if f.fix and f.fix.kind == "F4"]
+    assert len(f4) == 1
+    before = hashlib.sha256(demo_deck[0].read_bytes()).hexdigest()
+    out = tmp_path / "c.pptx"
+    assert [f.kind for f in apply_fixes(demo_deck[0], out, f4)] == ["F4"]
+    assert "stray-box" not in {e.name for e in load_deck(out).slides[7].elements}
+    assert hashlib.sha256(demo_deck[0].read_bytes()).hexdigest() == before
+
+
+def test_delete_shape_missing_raises(demo_deck):
+    from slideproof.fixes.writer import delete_shape
+    prs = Presentation(demo_deck[0])
+    with pytest.raises(KeyError):
+        delete_shape(prs, prs.slides[0].slide_id, 99999)

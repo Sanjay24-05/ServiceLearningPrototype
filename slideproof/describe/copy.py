@@ -59,7 +59,34 @@ def _c4(f, c: Ctx):
             f"Confidence: definite.")
 
 
-COPY: dict[str, Callable] = {"C1": _c1, "C2": _c2, "C4": _c4}
+def _c5(f, c: Ctx):
+    dpi = f.measurements["dpi"]
+    return (f"{c.label} is low resolution",
+            f"{cap(c.label)}, {c.loc}, has about {dpi} pixels per inch at its current size, "
+            f"so it will look blurry or blocky when projected. "
+            f"Use a larger or sharper version of the image. Confidence: definite.")
+
+
+def _c10(f, c: Ctx):
+    kind = f.measurements["kind"]
+    if kind == "empty":
+        if f.severity == "visible":
+            full = (f"{cap(c.label)}, {c.loc}, has no text but has a fill or outline, "
+                    f"so it shows as a blank shape. Confidence: definite.")
+        else:
+            full = (f"{cap(c.label)}, {c.loc}, is invisible when presenting but gets in the way "
+                    f"when you edit the slide. Confidence: definite.")
+        return f"{c.label} was left on the slide", full
+    if kind == "tiny":
+        return (f"{c.label} is too small to see",
+                f"{cap(c.label)}, {c.loc}, is almost zero in size, so it cannot be seen. "
+                f"It is probably left over from editing. Confidence: definite.")
+    return (f"{c.label} is completely off the slide",
+            f"{cap(c.label)} is entirely outside the slide, so it will not be shown "
+            f"when presenting. Confidence: definite.")
+
+
+COPY: dict[str, Callable] = {"C1": _c1, "C2": _c2, "C4": _c4, "C5": _c5, "C10": _c10}
 
 # (headline, full) for findings grouped by the prioritiser; {c} = count, {conf} = confidence.
 GROUPED: dict[str, tuple[str, str]] = {
@@ -69,6 +96,10 @@ GROUPED: dict[str, tuple[str, str]] = {
            "{c} objects on this slide overlap each other. Confidence: {conf}."),
     "C4": ("{c} pictures are stretched out of shape",
            "{c} pictures on this slide are stretched out of shape. Confidence: definite."),
+    "C5": ("{c} pictures are low resolution",
+           "{c} pictures on this slide are low resolution. Confidence: definite."),
+    "C10": ("{c} empty or stray objects",
+            "{c} empty or stray objects are on this slide. Confidence: definite."),
 }
 
 FALLBACK = ("a layout problem was found",

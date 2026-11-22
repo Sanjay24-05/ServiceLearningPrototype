@@ -56,8 +56,8 @@ def test_full_flow_demo_deck(client, demo_deck):
     run_id = r.headers["location"].split("/")[2]
     assert wait_done(client, run_id)["next"] == f"/runs/{run_id}/report"
     rep = client.get(f"/runs/{run_id}/report").text
-    assert "Report for demo.pptx" in rep and "Visible problems (3)" in rep
-    assert len(re.findall(r'type="checkbox"[^>]*\schecked', rep)) == 2
+    assert "Report for demo.pptx" in rep and "Visible problems (4)" in rep
+    assert len(re.findall(r'type="checkbox"[^>]*\schecked', rep)) == 3
     assert "LibreOffice is not installed" in rep
     assert "(s)" not in rep
     fixes = re.findall(r'value="(F\d:[^"]+)"', rep)
@@ -66,7 +66,7 @@ def test_full_flow_demo_deck(client, demo_deck):
     assert r.status_code == 303
     wait_done(client, run_id)
     res = client.get(f"/runs/{run_id}/result").text
-    assert "2 fixes applied. 2 problems resolved. 0 new problems among the problems this version checks." in res
+    assert "3 fixes applied. 3 problems resolved. 0 new problems among the problems this version checks." in res
     d = client.get(f"/runs/{run_id}/download")
     assert d.status_code == 200
     assert ("filename*=utf-8''demo%20%28checked%29.pptx"
