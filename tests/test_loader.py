@@ -19,7 +19,7 @@ def test_picture_info_and_alt(demo_deck):
     d = load_deck(demo_deck[0])
     photo = next(e for e in d.slides[3].elements if e.name == "team-photo")
     assert photo.kind == "picture" and photo.filled
-    assert (photo.image.px_w, photo.image.px_h) == (800, 600)
+    assert (photo.image.px_w, photo.image.px_h) == (1600, 1200)
     assert photo.image.alt == "Team photo"
 
 
