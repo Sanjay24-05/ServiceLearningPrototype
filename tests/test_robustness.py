@@ -122,7 +122,10 @@ def test_stretched_and_offslide_picture_gets_only_f2(tiny_deck):
 def test_empty_offslide_textbox_is_minor_and_labelled(tiny_deck):
     path = tiny_deck([dict(kind="text", name="t", x=12, y=1, w=3, h=1, text="  ")])
     deck = load_deck(path)
-    f = next(f for f in run_checks(deck, None) if f.check_id == "C1")
+    # Empty boxes belong to C10 (M2): one minor finding, no C1.
+    fs = run_checks(deck, None)
+    assert [x.check_id for x in fs] == ["C10"]
+    f = fs[0]
     assert f.severity == "minor"  # empty unfilled box is invisible: always minor
     assert "empty text box" in describe(f, deck).headline
     assert '""' not in describe(f, deck).headline
@@ -137,7 +140,8 @@ def test_empty_textbox_slightly_offslide_is_minor_only(tiny_deck):
 
 def test_empty_full_width_strip_bleeding_off_not_flagged(tiny_deck):
     path = tiny_deck([dict(kind="text", name="t", x=-0.5, y=1, w=13.5, h=1, text="")])
-    assert not run_checks(load_deck(path), None)
+    # No C1 (deliberate bleed / empty box); C10 still reports the empty box as minor.
+    assert [(f.check_id, f.severity) for f in run_checks(load_deck(path), None)] == [("C10", "minor")]
 
 
 def test_table_and_chart_frames_load(tmp_path):

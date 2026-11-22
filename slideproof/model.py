@@ -17,6 +17,7 @@ class ImageInfo:
     crop: tuple[float, float, float, float]  # left, top, right, bottom
     alt: str | None
     filename: str | None
+    vector: bool = False  # EMF/WMF or SVG: no pixel resolution to judge
 
 
 @dataclass
@@ -46,6 +47,12 @@ class Element:
     placeholder_type: str | None = None
     group_id: str | None = None
     fixable: bool = True  # False when no fix may be offered (e.g. duplicate shape id)
+    outlined: bool = False  # has a visible outline
+    paragraphs: list[tuple[int, float | None]] = field(default_factory=list)  # (chars, size_pt)
+    anchor: str = "top"  # vertical text anchor: "top" | "middle" | "bottom"
+    align: str = "left"  # horizontal alignment of the text: "left" | "center" | "right"
+    animated: bool = False  # the slide's animation list targets this shape
+    insets: tuple[int, int, int, int] = (91440, 45720, 91440, 45720)  # l, t, r, b in EMU
 
 
 @dataclass
@@ -55,6 +62,7 @@ class SlideModel:
     hidden: bool
     title_text: str | None
     elements: list[Element] = field(default_factory=list)
+    layout_key: str = ""  # identifies the slide layout (titles are only compared within one layout)
     skipped_shapes: list[str] = field(default_factory=list)
 
 
@@ -64,6 +72,7 @@ class DeckModel:
     slide_w: int
     slide_h: int
     slides: list[SlideModel] = field(default_factory=list)
+    theme_fonts: set[str] = field(default_factory=set)  # major/minor latin fonts of the theme
 
     @property
     def slide_rect(self) -> Rect:

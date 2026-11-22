@@ -1,16 +1,41 @@
 focus: heading Report for demo_deck.pptx
 heading level 1: Report for demo_deck.pptx
-text: 8 slides checked. 2 visible problems on 2 slides, 0 minor. This version checks two things: objects that stick out past the slide edge, and stretched pictures. Overlap, text overflow, contrast, fonts and title position are not checked yet.
+text: 8 slides checked. 5 visible problems on 4 slides, 2 minor. This version checks seven things: objects that stick out past the slide edge, stretched pictures, overlapping objects, low-resolution pictures, titles out of line with the rest, stray fonts, and empty or stray objects. Text overflow, contrast and text size are not checked yet.
 text: Note: text overflow and contrast checks were skipped because LibreOffice is not installed.
-heading level 2: Visible problems (2)
+heading level 2: Visible problems (5)
 heading level 3: Slide 4, "Our team": picture "Team photo" is stretched wider than its natural shape
 text: Picture "Team photo", in the centre, is shown 1.6 times as wide as its natural shape, so it looks distorted. Confidence: definite.
 text: Fix for this problem
 checkbox checked: Restore its natural shape, keeping it centred. Safe fix.
+disclosure collapsed: Layout of slide 4
+heading level 3: Slide 4, "Our team": picture "Garden logo" is low resolution
+text: Picture "Garden logo", in the bottom right, has about 50 pixels per inch at its current size, so it will look blurry or blocky when projected. Use a larger or sharper version of the image. Confidence: definite.
+text: No automatic fix for this one.
+disclosure collapsed: Layout of slide 4
 heading level 3: Slide 2, "Agenda": text box "Welcome and introductions from our team…" sticks out past the right edge
 text: Text box "Welcome and introductions from our team…", in the middle right, sticks out past the right edge of the slide by about a fifth of its width. Part of it will be cut off when presented. Confidence: definite.
 text: Fix for this problem
 checkbox checked: Move it back onto the slide. Safe fix.
+disclosure collapsed: Layout of slide 2
+heading level 3: Slide 3, "Results": picture "Bar chart of harvest results" covers about a quarter of text box "Tomatoes: 120 kg, our best harvest…"
+text: Picture "Bar chart of harvest results", in the centre, sits on top of about a quarter of text box "Tomatoes: 120 kg, our best harvest…", in the middle left. Your audience may not be able to read the covered text. Confidence: likely.
+text: No automatic fix for this one.
+disclosure collapsed: Layout of slide 3
+heading level 3: Slide 5, "Budget": the title sits noticeably lower than on the other 6 slides
+text: The title on this slide sits noticeably lower than on the other 6 slides, so it will seem to jump when the slides change. Confidence: definite.
+text: Fix for this problem
+checkbox checked: Move the title to the same position as on the other slides. Safe fix.
+disclosure collapsed: Layout of slide 5
+heading level 2: Minor polish (2)
+heading level 3: Slide 5, "Budget": text box "Funded by local grants" uses Georgia, a font used almost nowhere else
+text: Text box "Funded by local grants", in the bottom centre, is set in Georgia. The rest of the presentation mainly uses the theme font, so this text will look out of place. Confidence: definite.
+text: No automatic fix for this one.
+disclosure collapsed: Layout of slide 5
+heading level 3: Slide 8, "Thank you": empty text box was left on the slide
+text: Empty text box, in the bottom right, is invisible when presenting but gets in the way when you edit the slide. Confidence: definite.
+text: Fix for this problem
+checkbox checked: Remove the empty text box. Safe fix.
+disclosure collapsed: Layout of slide 8
 heading level 2: Apply fixes
 text: Selected fixes are applied to a copy. Your original file is not changed.
 button: Create corrected copy

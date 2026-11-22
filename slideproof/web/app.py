@@ -11,6 +11,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from slideproof.analysis import analyse
 from slideproof.describe import describe
+from slideproof.describe.layout_map import slide_map
 from slideproof.describe.coverage import (checked_sentence, plural,
                                           unchecked_sentence)
 from slideproof.verify import export_and_verify
@@ -52,7 +53,8 @@ def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
             t = deck.slides[f.slide_index - 1].title_text
             title = (f'Slide {f.slide_index}, "{t}": {d.headline}' if t
                      else f"Slide {f.slide_index}: {d.headline}")
-            out.append({"f": f, "d": d, "title": title})
+            out.append({"f": f, "d": d, "title": title,
+                        "layout": slide_map(deck.slides[f.slide_index - 1], deck)})
         return out
 
     @app.get("/")

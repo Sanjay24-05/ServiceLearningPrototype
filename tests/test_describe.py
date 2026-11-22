@@ -87,3 +87,19 @@ def test_generic_alt_text_is_not_a_name_but_real_alt_is(tiny_deck):
     assert element_label(el, slide) == "picture 1"
     el.image.alt = "Bar chart of harvest results"
     assert element_label(el, slide) == 'picture "Bar chart of harvest results"'
+
+
+def test_unknown_check_has_fallback_copy(demo_deck):
+    from slideproof.findings import Finding
+    d = load_deck(demo_deck[0])
+    el = d.slides[1].elements[0]
+    f = Finding("C99", 2, el.slide_id, (el.id,), "minor", "likely", 0.1, {})
+    desc = describe(f, d)
+    assert desc.headline == "a layout problem was found"
+    assert desc.full == "A layout problem was found on this slide. Confidence: likely."
+
+
+def test_every_check_has_grouped_copy():
+    # Review issue 6: any check can be grouped by the prioritiser (> 5 on one slide).
+    from slideproof.describe.copy import COPY, GROUPED
+    assert set(COPY) <= set(GROUPED)

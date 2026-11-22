@@ -41,6 +41,8 @@ def _line(node) -> str | None:
         return f"{role}: {name}" if name else None
     if role in {"textbox", "file upload"}:
         return f"file upload: {name}" if name else None
+    if role == "DisclosureTriangle":  # <summary> of a collapsed <details>
+        return f"disclosure collapsed: {name}" if name else None
     if role in _TEXT_ROLES:
         return f"text: {name}" if name else None
     return None

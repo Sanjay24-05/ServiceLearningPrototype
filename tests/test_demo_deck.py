@@ -23,3 +23,19 @@ def test_team_photo_is_stretched_1_6x(demo_deck):
     pic = next(sh for sh in prs.slides[3].shapes if sh.name == "team-photo")
     px_w, px_h = pic.image.size
     assert round((pic.width / pic.height) / (px_w / px_h), 2) == 1.6
+
+
+def test_team_photo_resolution(demo_deck):
+    prs = Presentation(demo_deck[0])
+    pic = next(sh for sh in prs.slides[3].shapes if sh.name == "team-photo")
+    assert pic.image.size == (1600, 1200)
+    assert round((pic.width / pic.height) / (1600 / 1200), 2) == 1.6
+
+
+def test_results_chart_overlaps_long_list(demo_deck):
+    prs = Presentation(demo_deck[0])
+    s = prs.slides[2]
+    lst = next(sh for sh in s.shapes if sh.name == "results-list")
+    chart = next(sh for sh in s.shapes if sh.name == "results-chart")
+    assert all(35 <= len(p.text) <= 45 for p in lst.text_frame.paragraphs)
+    assert (chart.left, chart.top) == (int(4.5 * 914400), int(2.6 * 914400))

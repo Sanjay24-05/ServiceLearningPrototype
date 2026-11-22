@@ -15,7 +15,20 @@ from playwright.sync_api import sync_playwright
 from slideproof.web.app import create_app
 
 LOG = Path(sys.argv[1]); DECK = Path(sys.argv[2]); RUNS = Path(sys.argv[3])
-s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+BROWSER_UNSAFE_PORTS = {5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6697, 10080}
+
+
+def free_browser_port() -> int:
+    """A free local port that Edge will open (some ports give ERR_UNSAFE_PORT)."""
+    while True:
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+        if port not in BROWSER_UNSAFE_PORTS:
+            return port
+
+
+port = free_browser_port()
 server = uvicorn.Server(uvicorn.Config(create_app(RUNS), host="127.0.0.1", port=port, log_level="warning"))
 threading.Thread(target=server.run, daemon=True).start()
 while not server.started: time.sleep(0.1)
@@ -40,10 +53,13 @@ with sync_playwright() as p:
     m = mark(); pg.keyboard.press("Tab"); time.sleep(2); phase("2. Tab to file field", m)
     pg.set_input_files("#file", str(DECK))
     m = mark(); pg.keyboard.press("Tab"); time.sleep(2); phase("3. Tab to Check slides button", m)
-    m = mark(); pg.keyboard.press("Enter"); pg.wait_for_url("**/report", timeout=120000); time.sleep(20)
+    m = mark(); pg.keyboard.press("Enter"); pg.wait_for_url("**/report", timeout=120000); time.sleep(35)
     phase("4. Progress page, then report page loads (say-all)", m)
-    for i in range(3):
+    for i in range(4):
         m = mark(); pg.keyboard.press("Tab"); time.sleep(2.5); phase(f"5.{i+1} Tab on report", m)
+    m = mark(); pg.keyboard.press("Space"); time.sleep(4); phase("5.5 Space opens the layout map", m)
+    m = mark(); pg.get_by_role("button", name="Create corrected copy").focus(); time.sleep(2)
+    phase("6. Focus moves to Create corrected copy", m)
     m = mark(); pg.keyboard.press("Enter"); pg.wait_for_url("**/result", timeout=180000); time.sleep(15)
     phase("7. Enter on button: progress page, then result page loads", m)
     for i in range(4):

@@ -14,6 +14,11 @@
 {% else %}
 <p>No automatic fix for this one.</p>
 {% endif %}
+<details><summary>Layout of slide {{ it.f.slide_index }}</summary>
+<ol>
+{% for line in it.layout %}<li>{{ line }}</li>
+{% endfor %}</ol>
+</details>
 </section>
 {% endfor %}
 {% endmacro %}

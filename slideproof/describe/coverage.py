@@ -1,9 +1,10 @@
 """Plain-language statements about what this version of the tool does and does not check."""
 from __future__ import annotations
 
-# M2 updates these two lists as checks are added.
-CHECKS_RUN = ("objects that stick out past the slide edge", "stretched pictures")
-NOT_CHECKED_YET = ("overlap", "text overflow", "contrast", "fonts", "title position")
+CHECKS_RUN = ("objects that stick out past the slide edge", "stretched pictures",
+              "overlapping objects", "low-resolution pictures", "titles out of line with the rest",
+              "stray fonts", "empty or stray objects")
+NOT_CHECKED_YET = ("text overflow", "contrast", "text size")
 
 _NUMBER_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six",
                  7: "seven", 8: "eight", 9: "nine", 10: "ten"}

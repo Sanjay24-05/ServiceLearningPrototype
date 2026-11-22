@@ -15,3 +15,16 @@ def set_frame(prs, slide_id: int, shape_id: int, frame: Rect) -> None:
             shape.width, shape.height = int(frame.w), int(frame.h)
             return
     raise KeyError(f"s{slide_id}-sh{shape_id}")
+
+
+def delete_shape(prs, slide_id: int, shape_id: int) -> None:
+    """Remove a shape from a slide. Raises KeyError if the shape is not found."""
+    slide = prs.slides.get(slide_id)
+    if slide is None:
+        raise KeyError(f"slide {slide_id}")
+    for shape in slide.shapes:
+        if shape.shape_id == shape_id:
+            el = shape._element
+            el.getparent().remove(el)
+            return
+    raise KeyError(f"s{slide_id}-sh{shape_id}")

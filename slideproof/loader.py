@@ -9,6 +9,7 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
 from pptx.oxml.ns import qn
 from pptx.shapes.group import GroupShape
 
+from slideproof import text_style
 from slideproof.model import DeckModel, Element, ImageInfo, RunStyle, SlideModel
 from slideproof.units import Rect, rotated_aabb
 
@@ -31,16 +32,49 @@ def load_deck(path: Path) -> DeckModel:
     if len(slides) > MAX_SLIDES:
         raise DeckError(
             f"This presentation has more than {MAX_SLIDES} slides; the limit is {MAX_SLIDES}.")
-    deck = DeckModel(path=path, slide_w=int(prs.slide_width), slide_h=int(prs.slide_height))
+    deck = DeckModel(path=path, slide_w=int(prs.slide_width), slide_h=int(prs.slide_height),
+                     theme_fonts=_theme_fonts(prs))
     for i, slide in enumerate(slides, start=1):
         deck.slides.append(_load_slide(slide, i))
     return deck
 
 
+def _theme_fonts(prs) -> set[str]:
+    """Latin typefaces of the first master's theme (heading and body fonts)."""
+    from lxml import etree
+    from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+    try:
+        theme = prs.slide_masters[0].part.part_related_by(RT.THEME)
+        root = etree.fromstring(theme.blob)
+    except Exception:
+        return set()
+    ns = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+    return {el.get("typeface") for el in root.iterfind(".//a:fontScheme/*/a:latin", ns)
+            if el.get("typeface")}
+
+
+def _layout_key(slide) -> str:
+    try:
+        return str(slide.slide_layout.part.partname)
+    except Exception:
+        return ""
+
+
+def _animated_ids(slide) -> set[int]:
+    try:
+        return {int(v) for v in slide._element.xpath(".//p:timing//p:spTgt/@spid")}
+    except Exception:
+        return set()
+
+
 def _load_slide(slide, index: int) -> SlideModel:
     sm = SlideModel(index=index, slide_id=slide.slide_id,
-                    hidden=slide._element.get("show") in ("0", "false"), title_text=None)
+                    hidden=slide._element.get("show") in ("0", "false"), title_text=None,
+                    layout_key=_layout_key(slide))
     _walk(slide.shapes, [], None, sm, [0])
+    animated = _animated_ids(slide)
+    for e in sm.elements:
+        e.animated = e.shape_id in animated
     return sm
 
 
@@ -104,9 +138,18 @@ def _walk(shapes, transforms, group_id, sm: SlideModel, counter) -> None:
             eid = f"{eid}-z{counter[0]}"
         text = None
         runs: list[RunStyle] = []
+        paragraphs: list[tuple[int, float | None]] = []
+        anchor, insets, align = "top", _DEFAULT_INSETS, "left"
         if getattr(shape, "has_text_frame", False):
-            text = shape.text_frame.text
-            runs = [_run_style(r) for p in shape.text_frame.paragraphs for r in p.runs]
+            tf = shape.text_frame
+            text = tf.text
+            runs = [_run_style(r) for p in tf.paragraphs for r in p.runs]
+            try:
+                style = text_style.resolve(shape, ph_type)
+                paragraphs, anchor, insets, align = (style.paragraphs, style.anchor,
+                                                     style.insets, style.align)
+            except Exception:
+                paragraphs = [(len(p.text), None) for p in tf.paragraphs]
         if kind == "title" and sm.title_text is None:
             sm.title_text = text
         sm.elements.append(Element(
@@ -115,7 +158,8 @@ def _walk(shapes, transforms, group_id, sm: SlideModel, counter) -> None:
             bbox=rotated_aabb(frame, rotation), z=counter[0], rotation=rotation,
             filled=kind == "picture" or _is_filled(shape), text=text, runs=runs,
             image=image, placeholder_type=ph_type, group_id=group_id,
-            fixable=fixable))
+            fixable=fixable, outlined=_is_outlined(shape), paragraphs=paragraphs,
+            anchor=anchor, insets=insets, align=align))
         counter[0] += 1
 
 
@@ -157,6 +201,18 @@ def _kind_inner(shape):
     return "other", None
 
 
+_DEFAULT_INSETS = (91440, 45720, 91440, 45720)
+
+
+
+def _is_outlined(shape) -> bool:
+    try:
+        line = shape.line
+        return line.fill.type in _FILLED and (line.width or 0) > 0
+    except Exception:
+        return False
+
+
 def _is_filled(shape) -> bool:
     try:
         return shape.fill.type in _FILLED
@@ -182,4 +238,17 @@ def _image_info(shape) -> ImageInfo:
     descr = shape._element.xpath(".//p:cNvPr")[0].get("descr")
     return ImageInfo(px_w=int(img.size[0]), px_h=int(img.size[1]),
                      crop=(shape.crop_left, shape.crop_top, shape.crop_right, shape.crop_bottom),
-                     alt=descr or None, filename=img.filename)
+                     alt=descr or None, filename=img.filename, vector=_is_vector(shape, img))
+
+
+_VECTOR_TYPES = ("image/x-emf", "image/x-wmf", "image/svg+xml")
+_SVG_EXT = "{96DAC541-7B7A-43D3-8B79-37D633B846F1}"
+
+
+def _is_vector(shape, img) -> bool:
+    try:
+        if img.content_type in _VECTOR_TYPES:
+            return True
+    except Exception:
+        pass
+    return bool(shape._element.xpath(f'.//a:blip/a:extLst/a:ext[@uri="{_SVG_EXT}"]'))

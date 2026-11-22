@@ -1,5 +1,5 @@
 import os
-import socket
+from tests.ports import free_browser_port
 import threading
 import time
 
@@ -17,9 +17,7 @@ NAV_TIMEOUT = 120_000
 def live_server(tmp_path, monkeypatch):
     import uvicorn
     monkeypatch.setenv("SOFFICE_PATH", str(tmp_path / "missing-soffice.exe"))
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        port = s.getsockname()[1]
+    port = free_browser_port()
     app = create_app(tmp_path / "runs")
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port,
                                            log_level="warning"))
@@ -92,9 +90,9 @@ def test_report_heading_outline(live_server, demo_deck, page):
         ".map(h => [h.tagName.toLowerCase(), h.textContent.trim()])")
     name = demo_deck[0].name
     assert heads[0] == ["h1", f"Report for {name}"]
-    assert heads[1] == ["h2", "Visible problems (2)"]
+    assert heads[1] == ["h2", "Visible problems (5)"]
     # Ranking is deterministic (spec 7.3): the stretched team photo on
     # slide 4 outranks the agenda box on slide 2.
-    assert [h[0] for h in heads[2:4]] == ["h3", "h3"]
-    assert [h[1].split(",")[0] for h in heads[2:4]] == ["Slide 4", "Slide 2"]
+    assert [h[0] for h in heads[2:7]] == ["h3"] * 5
+    assert [h[1].split(",")[0] for h in heads[2:7]] == ["Slide 4", "Slide 4", "Slide 2", "Slide 3", "Slide 5"]
     assert heads[-1] == ["h2", "Apply fixes"]

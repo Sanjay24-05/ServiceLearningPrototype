@@ -56,8 +56,8 @@ def test_full_flow_demo_deck(client, demo_deck):
     run_id = r.headers["location"].split("/")[2]
     assert wait_done(client, run_id)["next"] == f"/runs/{run_id}/report"
     rep = client.get(f"/runs/{run_id}/report").text
-    assert "Report for demo.pptx" in rep and "Visible problems (2)" in rep
-    assert len(re.findall(r'type="checkbox"[^>]*\schecked', rep)) == 2
+    assert "Report for demo.pptx" in rep and "Visible problems (5)" in rep
+    assert len(re.findall(r'type="checkbox"[^>]*\schecked', rep)) == 4
     assert "LibreOffice is not installed" in rep
     assert "(s)" not in rep
     fixes = re.findall(r'value="(F\d:[^"]+)"', rep)
@@ -66,7 +66,7 @@ def test_full_flow_demo_deck(client, demo_deck):
     assert r.status_code == 303
     wait_done(client, run_id)
     res = client.get(f"/runs/{run_id}/result").text
-    assert "2 fixes applied. 2 problems resolved. 0 new problems among the problems this version checks." in res
+    assert "4 fixes applied. 4 problems resolved. 0 new problems among the problems this version checks." in res
     d = client.get(f"/runs/{run_id}/download")
     assert d.status_code == 200
     assert ("filename*=utf-8''demo%20%28checked%29.pptx"
@@ -140,9 +140,10 @@ def test_report_states_what_is_checked(client, demo_deck):
     run_id = upload(client, "demo.pptx", demo_deck[0].read_bytes())
     wait_done(client, run_id)
     rep = client.get(f"/runs/{run_id}/report").text
-    assert ("This version checks two things: objects that stick out past the "
-            "slide edge, and stretched pictures. Overlap, text overflow, "
-            "contrast, fonts and title position are not checked yet.") in rep
+    assert ("This version checks seven things: objects that stick out past the slide edge, "
+            "stretched pictures, overlapping objects, low-resolution pictures, titles out of line "
+            "with the rest, stray fonts, and empty or stray objects. Text overflow, contrast and "
+            "text size are not checked yet.") in rep
     assert rep.index("This version checks") < rep.index("<form")
 
 
@@ -302,3 +303,11 @@ def test_coverage_sentence_in_summary_paragraph(client, tiny_deck):
     wait_done(client, run_id)
     rep = client.get(f"/runs/{run_id}/report").text
     assert re.search(r"<p>1 slide checked\. [^<]*\. This version checks", rep)
+
+
+def test_report_has_layout_details(client, demo_deck):
+    run_id = upload(client, "demo.pptx", demo_deck[0].read_bytes())
+    wait_done(client, run_id)
+    rep = client.get(f"/runs/{run_id}/report").text
+    assert "<summary>Layout of slide 4</summary>" in rep
+    assert re.search(r"<summary>Layout of slide 4</summary>\s*<ol>\s*<li>The title, in the top", rep)
