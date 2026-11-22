@@ -123,13 +123,20 @@ def test_empty_offslide_textbox_is_minor_and_labelled(tiny_deck):
     path = tiny_deck([dict(kind="text", name="t", x=12, y=1, w=3, h=1, text="  ")])
     deck = load_deck(path)
     f = next(f for f in run_checks(deck, None) if f.check_id == "C1")
-    assert f.severity == "minor"
+    assert f.severity == "minor"  # empty unfilled box is invisible: always minor
     assert "empty text box" in describe(f, deck).headline
     assert '""' not in describe(f, deck).headline
 
 
-def test_empty_textbox_mostly_onslide_not_flagged(tiny_deck):
+def test_empty_textbox_slightly_offslide_is_minor_only(tiny_deck):
+    # Not full-width or full-height, so it is no deliberate bleed (spec 7.2).
     path = tiny_deck([dict(kind="text", name="t", x=10, y=1, w=3.6, h=1, text="")])
+    fs = run_checks(load_deck(path), None)
+    assert [f.severity for f in fs] == ["minor"]
+
+
+def test_empty_full_width_strip_bleeding_off_not_flagged(tiny_deck):
+    path = tiny_deck([dict(kind="text", name="t", x=-0.5, y=1, w=13.5, h=1, text="")])
     assert not run_checks(load_deck(path), None)
 
 

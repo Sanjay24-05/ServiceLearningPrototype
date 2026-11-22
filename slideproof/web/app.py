@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Request, UploadFile
+from fastapi import FastAPI, Form, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -60,7 +60,12 @@ def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
         return page(request, "index.html", problems=startup_check())
 
     @app.post("/check")
-    async def check(request: Request, file: UploadFile):
+    async def check(request: Request):
+        # An empty file field arrives as a plain string, not an upload, so
+        # validate by hand instead of letting FastAPI answer with a 422.
+        file = (await request.form()).get("file")
+        if not hasattr(file, "read") or not (file.filename or "").strip():
+            return error(request, "Choose a PowerPoint file (.pptx) first.")
         name = Path((file.filename or "").replace("\\", "/")).name
         if not name.lower().endswith(".pptx"):
             return error(request, "Save as .pptx and try again.")

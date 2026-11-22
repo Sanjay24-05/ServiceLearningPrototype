@@ -26,9 +26,11 @@ def check_offslide(deck, render=None) -> list[Finding]:
             severity = "visible" if outside >= 0.10 else "minor"
             empty_text = e.kind in ("textbox", "body", "title") and not e.filled
             if not has_text and (e.kind in ("picture", "shape") or empty_text):
-                if visible >= 0.5:
+                # Deliberate bleed: backgrounds, banners, full-width strips.
+                if b.w >= 0.9 * slide.w or b.h >= 0.9 * slide.h:
                     continue
-                severity = "minor"
+                if empty_text:
+                    severity = "minor"  # invisible stray box; C10 covers it in M2
             edges = {}
             for name, amount, size in (
                 ("left", slide.x - b.x, b.w), ("right", b.right - slide.right, b.w),

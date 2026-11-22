@@ -1,6 +1,11 @@
 """Spoken labels for elements."""
 from __future__ import annotations
 
+import re
+
+_GENERIC_IMAGE_NAME = re.compile(
+    r"^(image\d*\.\w+|picture\s*\d*(\.\w+)?|img[_ ]?\d+\.\w+)$", re.IGNORECASE)
+
 
 def first_words(text: str, n: int = 6) -> str:
     words = text.split()
@@ -22,7 +27,13 @@ def element_label(el, slide) -> str:
         return f'text box "{first_words(el.text or "")}"'
     if kind == "picture":
         alt = (el.image.alt or "").strip() if el.image else ""
-        name = alt or (el.image.filename if el.image else None)
+        fname = (el.image.filename or "").strip() if el.image else ""
+        # Tools often fill alt text with the file name; both count as no name.
+        if _GENERIC_IMAGE_NAME.match(alt):
+            alt = ""
+        if _GENERIC_IMAGE_NAME.match(fname):
+            fname = ""
+        name = alt or fname
         if name:
             return f'picture "{name}"'
         pics = [e for e in slide.elements if e.kind == "picture"]

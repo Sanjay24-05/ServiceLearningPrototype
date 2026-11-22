@@ -211,7 +211,7 @@ Thresholds are starting values to be tuned against the demo deck and a corpus of
 
 | ID | Check | Method | Default severity | Reliability |
 |---|---|---|---|---|
-| C1 | **Off-slide content** | Element bbox outside slide rect. Flag if > 2% of the element's area is outside, or any rendered text span is outside | visible (minor if < 10% and no text cut) | High |
+| C1 | **Off-slide content** | Element bbox outside slide rect. Flag if > 2% of the element's area is outside, or any rendered text span is outside | visible (minor if < 10% and no text cut) | High. Zero-width or zero-height lines are not checked yet |
 | C2 | **Overlap** | Pairwise intersection of **content boxes** on each slide (O(n²); n is small). Magnitude = intersection ÷ content area of the *lower* element. Flag when the upper element is filled or a picture and covers ≥ 5% of a lower element's content; or when two text elements' content boxes intersect. See the content-box rule below the table | visible | High geometrically; intent is ambiguous, so exemptions apply (7.2) |
 | C3 | **Text overflow** | Union of rendered spans linked to an element extends beyond its bbox by > 0.1 inch (vertical or horizontal) | visible | Medium (depends on rendering fidelity) → confidence "likely" |
 | C4 | **Distorted image** | displayed aspect ÷ native aspect after crop. Flag if it deviates > 5% | visible if > 15%, otherwise minor | High |
@@ -239,7 +239,7 @@ These are deliberate patterns that must not be flagged:
 - **Labels on shapes:** text within or on a filled shape that fully contains it (callouts, buttons, diagram boxes). These are excluded from C2.
 - **Text inside its own shape:** an autoshape with text is a single element, never an overlap with itself.
 - **Grouped elements:** overlaps between members of the same group are excluded. The group was made deliberately.
-- **Decorative bleed:** pictures or shapes with no text that run off the slide edge by design (e.g. full-bleed photos) are only minor, and only if they sit fully on one side (less than 50% visible).
+- **Deliberate bleed:** an element with no text (a picture, a shape without text, or an empty unfilled text element) whose bounding box spans ≥ 90% of the slide's width or ≥ 90% of its height (backgrounds, banners, full-width strips) is not reported by C1. Every other element follows the normal C1 rule (more than 2% outside is a finding; visible at ≥ 10% outside, otherwise minor) and keeps its F1 fix. An empty unfilled text element that sticks out (and is not deliberate bleed) is always minor, since it cannot be seen in a slideshow. The background exemption above is unchanged.
 - **"That's intentional" marking:** the user dismisses a finding.
   - **Within a run (must-have):** the report's "Mark as intentional" button is a form post to the server, which keeps per-run state. The server returns the report with the finding moved into a collapsed "Marked intentional" section, updated counts, and focus placed on a confirmation message ("Marked intentional. 2 visible problems remain.") at the position of the next finding. A marked finding's fix is deselected.
   - **Across runs (should-have):** remembered in a local JSON file keyed by `(file name, slide_id, sorted shape_ids, check_id)` and suppressed on future runs of the same deck, with a count of suppressed findings shown in the summary.
