@@ -20,7 +20,7 @@ def _has_text(el) -> bool:
 def element_label(el, slide) -> str:
     kind = el.kind
     if kind == "title":
-        return "the title"
+        return "the title" if _has_text(el) else "empty title"
     if kind in ("body", "textbox"):
         if not _has_text(el):
             return "empty text box"

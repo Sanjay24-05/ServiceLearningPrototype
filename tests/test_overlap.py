@@ -88,3 +88,22 @@ def test_demo_slide3_c2(demo_deck):
     assert short.startswith('Slide 3: picture "Bar chart of harvest results" covers ')
     assert 'text box "' in short
     assert "may not be able to read the covered text" in describe(fs[0], d).full
+
+
+def test_shapes_stacked_on_plain_shape_not_flagged(tmp_path):
+    # Icon artwork: a small filled shape on top of a larger filled shape without text.
+    from pptx.enum.shapes import MSO_SHAPE
+
+    def build(s):
+        for sh in (s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(1), Inches(1), Inches(1.6), Inches(1.6)),
+                   s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.4), Inches(1.6), Inches(0.9), Inches(0.5))):
+            sh.fill.solid()  # explicit fills, like template artwork
+    assert check_overlap(_deck(tmp_path, build), None) == []
+
+
+def test_picture_over_picture_still_flagged(tmp_path):
+    def build(s):
+        s.shapes.add_picture(_png(), Inches(1), Inches(1), Inches(4), Inches(3))
+        s.shapes.add_picture(_png(), Inches(3), Inches(2), Inches(4), Inches(3))
+    fs = check_overlap(_deck(tmp_path, build), None)
+    assert len(fs) == 1 and fs[0].measurements["lower_is_text"] is False

@@ -42,6 +42,10 @@ def check_overlap(deck, render=None) -> list[Finding]:
 
 
 def _pair(lower, upper):
+    # Only covering something that shows content matters: text or a picture (or a table/chart).
+    # A plain shape without text under another shape is decoration (icons, badges, frames).
+    if lower.kind == "shape" and not _has_text(lower):
+        return None
     lc = content_box(lower)
     if lc is None:
         return None

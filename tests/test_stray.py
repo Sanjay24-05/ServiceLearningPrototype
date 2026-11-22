@@ -68,3 +68,23 @@ def test_c1_leaves_empty_boxes_to_c10(tiny_deck):
     d = load_deck(tiny_deck([{"kind": "textbox", "name": "t", "x": 12, "y": 1, "w": 3, "h": 1,
                               "text": "  "}]))
     assert [f.check_id for f in run_checks(d, None)] == ["C10"]
+
+
+def test_empty_title_placeholder_label(tmp_path):
+    # Title Only layout with the title left empty.
+    prs = Presentation()
+    prs.slides.add_slide(next(l for l in prs.slide_layouts if l.name == "Title Only"))
+    p = tmp_path / "t.pptx"; prs.save(p)
+    d = load_deck(p)
+    f = check_stray(d, None)[0]
+    assert describe(f, d).headline == "empty title was left on the slide"
+
+
+def test_empty_placeholder_with_fill_is_still_minor(tmp_path):
+    # Empty placeholders are not shown in a slideshow, whatever their fill.
+    def build(s):
+        s.shapes.title.text = "Hello"
+        body = s.placeholders[1]
+        body.fill.solid()
+    d = _deck(tmp_path, build, layout=1)
+    assert [(f.severity, f.fix.kind) for f in check_stray(d, None)] == [("minor", "F4")]
