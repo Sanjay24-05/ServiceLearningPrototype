@@ -341,7 +341,7 @@ def test_about_shows_model_accuracy(client):
     html = client.get("/about").text
     assert '<h2>What "Probably intentional" means</h2>' in html
     assert "<h2>How accurate the model is</h2>" in html
-    assert f"kept {round(m['mistake_recall'] * 100)}% of real mistakes" in html
+    assert f"kept {round(m['mistake_recall'] * 100)}% of planted mistakes" in html
     assert f"recognised {round(m['deliberate_recall'] * 100)}% of deliberate designs" in html
     assert "All training data is synthetic" in html
     assert "Nothing is hidden: it is still listed and counted" in html
