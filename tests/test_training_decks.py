@@ -61,7 +61,7 @@ def test_all_pattern_kinds_appear(tmp_path):
     import re
     paths = build_training_decks(tmp_path, 30, 7)
     names = {e.name for p in paths for s in load_deck(p).slides for e in s.elements}
-    assert len(_MOD.PATTERN_KINDS) == 15
+    assert len(_MOD.PATTERN_KINDS) == 16
     for kind in _MOD.PATTERN_KINDS:
         assert any(re.match(rf"^(deliberate|mistake)-{kind}-\d+", n) for n in names), kind
 

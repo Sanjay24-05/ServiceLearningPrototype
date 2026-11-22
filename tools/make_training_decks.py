@@ -3,7 +3,8 @@
 Usage: python tools/make_training_decks.py <out_dir> [n_decks=120] [seed=7]
 
 Every deck carries 2-4 deliberate design patterns (elements named ``deliberate-<pattern>-<n>``)
-and 2-4 mistakes (``mistake-<pattern>-<n>``). The label comes from the name prefix only.
+and 2-4 mistakes (``mistake-<pattern>-<n>``); ``mistake-dup-<n>`` is a mistake copied onto
+several slides by duplicating the slide. The label comes from the name prefix only.
 Ordinary content is named ``content-...`` so candidates that involve no labelled element can be
 dropped. Deliberate patterns sit in free bands away from the content; mistakes go anywhere.
 Positions, sizes and colours come from overlapping ranges, and each pattern has variants so no
@@ -290,6 +291,49 @@ def m_spill_title(c, s, name):
     _picture(c, s, cx - tw / 2, top, tw, c.u(1.2, 3.5), name)
 
 
+def m_dup_slide(c, s, name):
+    """A mistake made once and then copied by duplicating the slide: the same object at the same
+    spot on 2-5 slides. Added after review: repeats alone must not read as deliberate design."""
+    others = [o for o in c.slides if o is not s]
+    copies = [s] + c.rng.sample(others, min(len(others), c.rng.randint(1, 4)))
+    roll = c.rng.random()
+    if roll < 0.15:  # the title dragged off the slide, on every slide that has one
+        titled = [o for o in copies if o.shapes.title is not None]
+        if titled:
+            f, side = c.u(0.2, 0.6), c.rng.choice("lrb")
+            for o in titled:
+                t = o.shapes.title
+                w, h = t.width / _EMU, t.height / _EMU
+                if side == "l":
+                    t.left = Inches(-f * w)
+                elif side == "r":
+                    t.left = Inches(c.w - (1 - f) * w)
+                else:
+                    t.top = Inches(c.h - (1 - f) * h)
+                t.name = name
+            return
+    if roll < 0.4:  # a text box (often title-sized) nudged past an edge
+        big = c.chance(0.4)
+        w, h = (c.u(c.w * 0.5, c.w * 0.9), c.u(0.8, 1.3)) if big else (c.u(2, 5), c.u(0.6, 1.4))
+        x, y = c.edge_xy(w, h, c.u(0.1, 0.6), corner=c.chance(0.3))
+        lines = [f"{c.rng.choice(_TOPICS)}"] if big else [c.rng.choice(_POINTS)]
+        for o in copies:
+            _textbox(o, x, y, w, h, lines, 36 if big else 18, name)
+        return
+    if roll < 0.75:  # a picture pushed part-way off an edge (or a corner, further than a logo)
+        d = c.u(0.6, 3.0)
+        w, h = d * c.u(0.7, 1.4), d
+        x, y = c.edge_xy(w, h, c.u(0.25, 0.6), corner=c.chance(0.3))
+        for o in copies:
+            _picture(c, o, x, y, w, h, name)
+        return
+    # a picture dragged over the bullets
+    pw, ph = c.u(1.2, 3), c.u(1, 2.4)
+    px, py = c.u(0.8, 0.6 + c.w * 0.5 - pw), c.u(1.8, 4.9 - ph)
+    for o in copies:
+        _picture(c, o, px, py, pw, ph, name)
+
+
 _DELIBERATE = {
     "full-bleed-photo": d_full_bleed, "edge-banner": d_edge_banner, "edge-half-circle": d_half_circle,
     "corner-badge": d_corner_badge, "stacked-icon": d_stacked_icon, "caption-band": d_caption_band,
@@ -299,6 +343,7 @@ _EVERY_SLIDE = ("corner-logo", "footer-bar")
 _MISTAKES = {
     "nudged-text": m_nudged_text, "picture-over-text": m_picture_over_text,
     "partly-off-box": m_partly_off, "duplicate-offset": m_duplicate, "spilled-title": m_spill_title,
+    "dup": m_dup_slide,
 }
 PATTERN_KINDS = list(_DELIBERATE) + list(_EVERY_SLIDE) + list(_MISTAKES)
 

@@ -4,67 +4,72 @@
   "family": "hgb",
   "threshold": 0.8,
   "safety_target_missed": false,
-  "mistake_recall": 0.9631,
-  "deliberate_recall": 0.9548,
-  "precision": 0.958,
-  "f1": 0.9564,
+  "mistake_recall": 0.9764,
+  "deliberate_recall": 0.9433,
+  "precision": 0.9727,
+  "f1": 0.9578,
   "class_counts_before_cap": {
-    "deliberate": 842,
-    "mistake": 733,
-    "total": 1575
+    "deliberate": 874,
+    "mistake": 827,
+    "total": 1701
   },
   "class_counts_after_cap": {
-    "deliberate": 597,
-    "mistake": 677,
-    "total": 1274
+    "deliberate": 611,
+    "mistake": 706,
+    "total": 1317
+  },
+  "class_counts_judged": {
+    "deliberate": 529,
+    "mistake": 593,
+    "total": 1122
   },
   "rows_dropped": {
-    "mixed": 24,
+    "mixed": 29,
     "content_only": 0
   },
   "cap_per_instance": 3,
   "families": {
     "logreg": {
-      "threshold": 0.88,
+      "threshold": 0.87,
       "target_missed": false,
-      "mistake_recall": 0.9513,
-      "deliberate_recall": 0.4941,
-      "precision": 0.8994,
-      "f1": 0.6378,
+      "mistake_recall": 0.9511,
+      "deliberate_recall": 0.5936,
+      "precision": 0.9155,
+      "f1": 0.7202,
       "confusion": {
-        "tp": 295,
-        "fp": 33,
-        "fn": 302,
-        "tn": 644
+        "tp": 314,
+        "fp": 29,
+        "fn": 215,
+        "tn": 564
       }
     },
     "hgb": {
       "threshold": 0.8,
       "target_missed": false,
-      "mistake_recall": 0.9631,
-      "deliberate_recall": 0.9548,
-      "precision": 0.958,
-      "f1": 0.9564,
+      "mistake_recall": 0.9764,
+      "deliberate_recall": 0.9433,
+      "precision": 0.9727,
+      "f1": 0.9578,
       "confusion": {
-        "tp": 570,
-        "fp": 25,
-        "fn": 27,
-        "tn": 652
+        "tp": 499,
+        "fp": 14,
+        "fn": 30,
+        "tn": 579
       }
     }
   },
   "held_out": {
     "demo_deck": {
-      "judged": 2,
+      "judged": 1,
       "moved": 0,
-      "planted": 2,
+      "planted": 1,
       "planted_moved": 0,
       "moved_findings": []
     },
     "corpus": {
-      "judged": 2,
+      "judged": 1,
       "moved": 0,
-      "planted": 2,
+      "planted": 1,
       "planted_moved": 0,
       "moved_findings": []
     },
@@ -80,7 +85,7 @@
           "shapes": [
             ""
           ],
-          "p": 0.997,
+          "p": 1.0,
           "planted": false
         }
       ],

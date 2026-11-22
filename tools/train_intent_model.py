@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from slideproof.checks import run_checks  # noqa: E402
+from slideproof.intent import _judgeable  # noqa: E402
 from slideproof.intent.features import FEATURES, features_for, raw_candidates  # noqa: E402
 from slideproof.loader import load_deck  # noqa: E402
 
@@ -70,7 +71,7 @@ def _instance(names, label):
 
 
 def build_dataset(n_decks: int, seed: int):
-    rows = []  # (group, label, instance, features, check_id)
+    rows = []  # (group, label, instance, features, check_id, judgeable by the app)
     dropped = {"mixed": 0, "content_only": 0}
     with tempfile.TemporaryDirectory() as tmp:
         paths = _generator().build_training_decks(Path(tmp), n_decks, seed)
@@ -84,7 +85,7 @@ def build_dataset(n_decks: int, seed: int):
                     dropped[key] += 1
                     continue
                 f = features_for(c.check_id, c.element_ids, c.magnitude, deck)
-                rows.append((gi, lab, _instance(names, lab), f, c.check_id))
+                rows.append((gi, lab, _instance(names, lab), f, c.check_id, _judgeable(c, deck)))
     before = _counts(rows)
     rng = random.Random(seed)
     buckets = defaultdict(list)
@@ -100,7 +101,8 @@ def build_dataset(n_decks: int, seed: int):
     X = np.array([r[3] for r in kept])
     y = np.array([r[1] for r in kept])
     g = np.array([r[0] for r in kept])
-    return X, y, g, before, after, dropped
+    j = np.array([r[5] for r in kept], dtype=bool)
+    return X, y, g, j, before, after, _counts([r for r in kept if r[5]]), dropped
 
 
 def _counts(rows):
@@ -163,16 +165,12 @@ def pick_threshold(p, y):
 
 # ---------------------------------------------------------------- held-out real decks
 def _judge(deck, model, t, planted):
-    """Apply the model to C1/C2 findings (C2 only when the upper is a picture or filled shape)."""
+    """Apply the model to exactly the findings the app judges (slideproof.intent._judgeable)."""
     judged = moved = planted_total = planted_moved = 0
     moved_list = []
     for f in run_checks(deck, None):
-        if f.check_id not in ("C1", "C2"):
+        if not _judgeable(f, deck):
             continue
-        if f.check_id == "C2":
-            up = deck.element(f.element_ids[0])
-            if not (up.kind == "picture" or up.filled):
-                continue
         names = {deck.element(e).name for e in f.element_ids}
         is_planted = any(r["check"] == f.check_id and r["slide"] == f.slide_index
                          and set(r["shapes"]) <= names for r in planted)
@@ -245,14 +243,17 @@ def train(out_model_dir: Path, card_path: Path, n_decks: int = 120, seed: int = 
     card_path = Path(card_path)
     out_model_dir.mkdir(parents=True, exist_ok=True)
     card_path.parent.mkdir(parents=True, exist_ok=True)
-    X, y, g, before, after, dropped = build_dataset(n_decks, seed)
+    X, y, g, j, before, after, judged_counts, dropped = build_dataset(n_decks, seed)
 
-    p_lr = _oof(_logreg, X, y, g)
-    p_hg = _oof(lambda: _hgb(seed), X, y, g)
-    t_lr, miss_lr = pick_threshold(p_lr, y)
-    t_hg, miss_hg = pick_threshold(p_hg, y)
-    fam = {"logreg": {"threshold": t_lr, "target_missed": miss_lr, **_at(p_lr, y, t_lr)},
-           "hgb": {"threshold": t_hg, "target_missed": miss_hg, **_at(p_hg, y, t_hg)}}
+    # Train on every row; choose the threshold and report metrics only on the rows the app
+    # would judge (text that sticks out is never judged), so the numbers match what ships.
+    p_lr = _oof(_logreg, X, y, g)[j]
+    p_hg = _oof(lambda: _hgb(seed), X, y, g)[j]
+    yj = y[j]
+    t_lr, miss_lr = pick_threshold(p_lr, yj)
+    t_hg, miss_hg = pick_threshold(p_hg, yj)
+    fam = {"logreg": {"threshold": t_lr, "target_missed": miss_lr, **_at(p_lr, yj, t_lr)},
+           "hgb": {"threshold": t_hg, "target_missed": miss_hg, **_at(p_hg, yj, t_hg)}}
     ship = "hgb" if fam["hgb"]["f1"] - fam["logreg"]["f1"] > 0.05 else "logreg"
     t, missed = fam[ship]["threshold"], fam[ship]["target_missed"]
     model = _logreg().fit(X, y) if ship == "logreg" else _hgb(seed).fit(X, y)
@@ -270,6 +271,7 @@ def train(out_model_dir: Path, card_path: Path, n_decks: int = 120, seed: int = 
         "deliberate_recall": fam[ship]["deliberate_recall"],
         "precision": fam[ship]["precision"], "f1": fam[ship]["f1"],
         "class_counts_before_cap": before, "class_counts_after_cap": after,
+        "class_counts_judged": judged_counts,
         "rows_dropped": dropped, "cap_per_instance": CAP_PER_INSTANCE,
         "families": fam, "held_out": hold,
         "planted_mistakes_moved": planted_moved,
@@ -294,6 +296,7 @@ def _held(name, r):
 
 def render_card(m: dict) -> str:
     b, a, h = m["class_counts_before_cap"], m["class_counts_after_cap"], m["held_out"]
+    jc = m["class_counts_judged"]
     fam = m["families"]
     names = {"logreg": "Logistic regression", "hgb": "Gradient boosting"}
     if m["safety_target_missed"]:
@@ -311,18 +314,22 @@ def render_card(m: dict) -> str:
                 f"mistakes moved is weak evidence, not proof.")
     mv = yi.get("moved_findings", [])
     if mv:
-        listing = "; ".join(f"{x['check']} on slide {x['slide']} (p = {x['p']:.3f})" for x in mv)
-        yi_bullet = (f"- The Yellow Idea moves ({listing}) have not been confirmed as deliberate by a person; "
-                     f"they are unverified.\n")
+        listing = "; ".join(f"{x['check']} on slide {x['slide']}, p = {x['p']:.3f}" for x in mv)
+        if len(mv) == 1:
+            yi_bullet = (f"- The Yellow Idea move ({listing}) has not been confirmed as deliberate by a person; "
+                         f"it is unverified.\n")
+        else:
+            yi_bullet = (f"- The Yellow Idea moves ({listing}) have not been confirmed as deliberate by a person; "
+                         f"they are unverified.\n")
     else:
         yi_bullet = "- No Yellow Idea finding was moved, so there is nothing there to verify.\n"
     return f"""# Intent model card
 
-All training data is synthetic. The decks were generated by `tools/make_training_decks.py` with a fixed seed ({m['seed']}); no real student, teacher or institutional slide was used for training or for choosing the threshold. Real decks appear only in the held-out check below.
+All training data is synthetic. The decks were generated by `tools/make_training_decks.py` with a fixed seed ({m['seed']}); no real student, teacher or institutional slide was used for training or for choosing the threshold. The held-out check below uses hand-built test decks and one real third-party template (Yellow Idea).
 
 ## Purpose
 
-Slide Proof's off-slide (C1) and overlap (C2) checks flag geometry that may be a mistake or a deliberate design choice (full-bleed background, corner logo, caption band, frame). The model estimates the probability that a candidate is deliberate. Findings with probability at or above the threshold may be moved out of the main list; everything else stays. A wrong move hides a real mistake from a blind user, so **mistake recall wins over usefulness**: the threshold is chosen for mistake recall first.
+Slide Proof's off-slide (C1) and overlap (C2) checks flag geometry that may be a mistake or a deliberate design choice (full-bleed background, corner logo, caption band, frame). The model estimates the probability that a candidate is deliberate. Findings with probability at or above the threshold may be moved out of the main list; everything else stays. A wrong move demotes a real mistake to the Probably intentional section, with its fix unticked, so **mistake recall wins over usefulness**: the threshold is chosen for mistake recall first.
 
 ## Patterns and ranges
 
@@ -336,6 +343,9 @@ Rows per (deck, pattern instance) are capped at {m['cap_per_instance']} (seeded)
 |---|---|---|---|
 | Before cap | {b['deliberate']} | {b['mistake']} | {b['total']} |
 | After cap | {a['deliberate']} | {a['mistake']} | {a['total']} |
+| After cap, judged by the app | {jc['deliberate']} | {jc['mistake']} | {jc['total']} |
+
+The model trains on every row after the cap. Text that sticks out (C1 on a title, body or text box, or on any element with text) is never judged by the app, so the threshold and the metrics below use only the rows the app would judge.
 
 Dropped before labelling: {m['rows_dropped']['mixed']} mixed-prefix, {m['rows_dropped']['content_only']} content-only candidates.
 
@@ -354,21 +364,23 @@ Shipped: **{names[m['family']]}** (logistic regression unless gradient boosting 
 
 The smallest t >= 0.80 on a 0.01 grid where out-of-fold mistake recall is at least 0.95. {status} Shipped threshold: {m['threshold']:.2f}.
 
-## Held-out real-deck results
+## Held-out decks (not used in training)
 
-The shipped model is applied to C1 findings and to C2 findings whose upper element is a picture or filled shape. Text-over-text C2 findings are out of distribution and left unjudged.
+The shipped model is applied to exactly the findings the app judges: C1 findings on elements without text (not a title, body or text box), and C2 findings whose upper element is a picture or filled shape. The demo deck and the test corpus are hand-built test decks; only Yellow Idea is a real third-party template.
 
 | Deck set | Judged | Would move | Planted mistakes | Planted moved |
 |---|---|---|---|---|
-{_held('Demo deck', h['demo_deck'])}
-{_held('Test corpus', h['corpus'])}
-{_held('Yellow Idea template', yi)}
+{_held('Demo deck (hand-built test deck)', h['demo_deck'])}
+{_held('Test corpus (hand-built test decks)', h['corpus'])}
+{_held('Yellow Idea (real third-party template)', yi)}
 
 Planted mistakes moved: **{m['planted_mistakes_moved']}** (must be 0). Yellow Idea: {yi_txt}.
 
 ## Known limits
 
+- Untested on real-world decks.
 - The training distribution is generated by us, so scores measure agreement with our own generator, not with real designers. Treat them as a sanity check, not a field accuracy.
+- The model leans on "the same object on several slides". A mistake copied by duplicating a slide repeats too, so duplicated-slide mistakes (`mistake-dup-<n>`) were added to the generator after review on 2026-11-22, and text that sticks out is never judged.
 - {held_txt}
 {yi_bullet}- Text-over-text overlaps are not judged. Rotated, grouped and placeholder-heavy designs are lightly covered.
 - Generator history: variants were added so no single feature separates the classes, and rows per pattern instance are capped.

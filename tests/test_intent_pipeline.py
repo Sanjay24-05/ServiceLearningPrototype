@@ -172,3 +172,120 @@ def test_judged_findings_carry_repeat_count(tmp_path):
     _, _, (after, _) = _judged(_logo_deck(tmp_path / "logo.pptx"))
     c1 = [f for f in after if f.check_id == "C1"]
     assert all(f.measurements["intent_repeats"] == 5 for f in c1)
+
+
+# ---------------------------------------------------------------- final review fixes
+def _dup_deck(path, build, n=5):
+    """n Title Only slides with a title and a text box; build(slide) adds the same mistake to each."""
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
+    lay = next(l for l in prs.slide_layouts if l.name == "Title Only")
+    for i in range(n):
+        s = prs.slides.add_slide(lay)
+        s.shapes.title.text = f"Topic {i + 1}"
+        s.shapes.add_textbox(Inches(0.6), Inches(1.6), Inches(6), Inches(4)).text_frame.text = "Point one"
+        build(s)
+    prs.save(path)
+    return path
+
+
+def _png():
+    buf = BytesIO()
+    Image.new("RGB", (120, 120), (40, 90, 160)).save(buf, "PNG")
+    buf.seek(0)
+    return buf
+
+
+def _moved_mistakes(path):
+    deck, _, (after, note) = _judged(path)
+    assert note is None
+    r = prioritise(after, len(deck.slides), intent.threshold())
+    return [f for f in r.intentional if any(deck.element(e).name == "MISTAKE" for e in f.element_ids)], r
+
+
+def test_duplicated_text_box_off_slide_never_moves(tmp_path):
+    def build(s):
+        t = s.shapes.add_textbox(Inches(10.5), Inches(3), Inches(3.8), Inches(1))
+        t.text_frame.text = "Source: survey 2026"
+        t.name = "MISTAKE"
+    moved, r = _moved_mistakes(_dup_deck(tmp_path / "tb.pptx", build))
+    assert r.intentional == []
+
+
+def test_duplicated_dragged_title_never_moves(tmp_path):
+    def build(s):
+        s.shapes.title.left = Inches(9)
+        s.shapes.title.name = "MISTAKE"
+    moved, r = _moved_mistakes(_dup_deck(tmp_path / "title.pptx", build))
+    assert r.intentional == []
+
+
+def test_text_c1_is_not_judged(tmp_path):
+    def build(s):
+        from pptx.enum.shapes import MSO_SHAPE
+        sh = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(6.9), Inches(13.333), Inches(1.0))
+        sh.text_frame.text = "Group 4 - Environmental Studies"
+        sh.name = "MISTAKE"
+    deck, _, (after, _) = _judged(_dup_deck(tmp_path / "band.pptx", build, n=1))
+    c1 = [f for f in after if f.check_id == "C1"]
+    assert c1 and all("intent_p" not in f.measurements for f in c1)
+
+
+def test_duplicated_picture_half_off_right_edge_stays(tmp_path):
+    def build(s):
+        s.shapes.add_picture(_png(), Inches(12.6), Inches(3.0), Inches(1.4), Inches(1.4)).name = "MISTAKE"
+    moved, _ = _moved_mistakes(_dup_deck(tmp_path / "pic.pptx", build))
+    assert moved == [], [round(f.measurements["intent_p"], 3) for f in moved]
+
+
+def test_prediction_failure_is_a_noop(monkeypatch, tmp_path):
+    model, _ = intent._load()
+
+    def boom(*a, **k):
+        raise ValueError("broken model")
+
+    monkeypatch.setattr(model, "predict_proba", boom)
+    deck = load_deck(_logo_deck(tmp_path / "logo.pptx"))
+    before = run_checks(deck, None)
+    after, note = intent.judge(before, deck)
+    assert note == NOTE
+    assert after == before and all("intent_p" not in f.measurements for f in after)
+
+
+def test_behind_reason_rules():
+    from slideproof.intent.features import FEATURES
+
+    def vec(**kv):
+        v = dict.fromkeys(FEATURES, 0.0)
+        v.update(has_text=1.0, **kv)
+        return [v[k] for k in FEATURES]
+    assert "behind" in intent._reasons(vec(is_c1=1.0, z_rank=0.0, elements_on_slide=4.0))
+    assert "behind" not in intent._reasons(vec(is_c1=1.0, z_rank=0.0, elements_on_slide=1.0))
+    assert "behind" not in intent._reasons(vec(is_c2=1.0, z_rank=0.0, elements_on_slide=4.0))
+
+
+def test_trainer_held_out_uses_shipped_judgeable(tmp_path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("train_intent_model", ROOT / "tools" / "train_intent_model.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["train_intent_model"] = mod
+    spec.loader.exec_module(mod)
+
+    class Always:
+        def predict_proba(self, X):
+            import numpy as np
+            return np.array([[0.0, 1.0]] * len(X))
+
+    def build(s):
+        t = s.shapes.add_textbox(Inches(10.5), Inches(3), Inches(3.8), Inches(1))
+        t.text_frame.text = "Source: survey 2026"
+    deck = load_deck(_dup_deck(tmp_path / "tb.pptx", build, n=1))
+    assert any(f.check_id == "C1" for f in run_checks(deck, None))
+    assert mod._judge(deck, Always(), 0.8, [])["judged"] == 0
+
+
+def test_app_start_loads_model(tmp_path, monkeypatch):
+    from slideproof.web.app import create_app
+    intent._cache.clear()
+    create_app(tmp_path / "runs")
+    assert intent._cache.get("dir") == intent.MODEL_DIR

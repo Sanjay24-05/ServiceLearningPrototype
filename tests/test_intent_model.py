@@ -47,3 +47,35 @@ def test_card_states_synthetic(run_a):
 def test_threshold_meets_safety_or_flags(run_a):
     _, m = run_a
     assert m["mistake_recall"] >= 0.95 or m["safety_target_missed"] is True
+
+
+def test_card_wording_is_honest(run_a):
+    d, _ = run_a
+    card = (d / "card.md").read_text(encoding="utf-8")
+    first = next(p for p in card.split("\n\n") if p.strip() and not p.lstrip().startswith("#"))
+    assert "Real decks appear only" not in first
+    assert "## Held-out decks (not used in training)" in card and "real-deck" not in card
+    assert "hand-built test deck" in card and "only Yellow Idea is a real third-party template" in card
+    assert "- Untested on real-world decks." in card
+    assert "duplicated-slide mistakes" in card and "text that sticks out is never judged" in card
+    assert "demotes a real mistake to the Probably intentional section, with its fix unticked" in card
+    assert "hides a real mistake" not in card
+
+
+def test_card_yellow_listing_has_no_nested_brackets():
+    m = _trainer()
+    base = {"seed": 7, "n_decks": 1, "cap_per_instance": 3, "safety_target_missed": False, "threshold": 0.8,
+            "family": "hgb", "planted_mistakes_moved": 0, "rows_dropped": {"mixed": 0, "content_only": 0}}
+    cnt = {"deliberate": 1, "mistake": 1, "total": 2}
+    fam = {"mistake_recall": 1, "deliberate_recall": 1, "precision": 1, "f1": 1, "threshold": 0.8,
+           "confusion": {"tp": 1, "fp": 0, "fn": 0, "tn": 1}}
+    held = {"judged": 1, "moved": 0, "planted": 1, "planted_moved": 0, "moved_findings": []}
+    one = {"check": "C1", "slide": 8, "p": 0.997}
+    for mv, want in (([one], "- The Yellow Idea move (C1 on slide 8, p = 0.997) has not been confirmed"),
+                     ([one, dict(one, slide=9)], "- The Yellow Idea moves (C1 on slide 8, p = 0.997; C1 on "
+                                                 "slide 9, p = 0.997) have not been confirmed")):
+        yi = dict(held, moved=len(mv), moved_findings=mv, status="ok")
+        card = m.render_card(dict(base, class_counts_before_cap=cnt, class_counts_after_cap=cnt,
+                                  class_counts_judged=cnt, families={"logreg": fam, "hgb": fam},
+                                  held_out={"demo_deck": held, "corpus": held, "yellow_idea": yi}))
+        assert want in card
