@@ -147,7 +147,7 @@ def test_report_states_what_is_checked(client, demo_deck):
 
 
 def test_summary_singular_and_minor_only(client, tiny_deck):
-    path = tiny_deck([dict(kind="text", name="t", x=12.9, y=1, w=1, h=1, text="")])
+    path = tiny_deck([dict(kind="text", name="t", x=12.5, y=1, w=0.9, h=1, text="")])
     run_id = upload(client, "one.pptx", path.read_bytes())
     wait_done(client, run_id)
     rep = client.get(f"/runs/{run_id}/report").text
@@ -277,3 +277,28 @@ def test_clear_runs_removes_old_run_folders(tmp_path):
 def test_untrusted_host_header_rejected(client):
     assert client.get("/", headers={"host": "evil.example"}).status_code == 400
     assert client.get("/", headers={"host": "localhost:8765"}).status_code == 200
+
+
+def test_file_input_not_required(client):
+    assert " required" not in client.get("/").text.split("<form")[1]
+
+
+def test_submit_without_file_field_gives_400(client):
+    r = client.post("/check", data={})
+    assert r.status_code == 400
+    assert 'role="alert"' in r.text and "Check another file" in r.text
+    assert "Choose a PowerPoint file (.pptx) first." in r.text
+
+
+def test_submit_with_empty_filename_gives_400(client):
+    r = client.post("/check", files={"file": ("", b"")})
+    assert r.status_code == 400
+    assert "Choose a PowerPoint file (.pptx) first." in r.text
+
+
+def test_coverage_sentence_in_summary_paragraph(client, tiny_deck):
+    path = tiny_deck([dict(kind="text", name="t", x=1, y=1, w=3, h=1, text="hi")])
+    run_id = upload(client, "ok.pptx", path.read_bytes())
+    wait_done(client, run_id)
+    rep = client.get(f"/runs/{run_id}/report").text
+    assert re.search(r"<p>1 slide checked\. [^<]*\. This version checks", rep)
