@@ -53,10 +53,13 @@ with sync_playwright() as p:
     m = mark(); pg.keyboard.press("Tab"); time.sleep(2); phase("2. Tab to file field", m)
     pg.set_input_files("#file", str(DECK))
     m = mark(); pg.keyboard.press("Tab"); time.sleep(2); phase("3. Tab to Check slides button", m)
-    m = mark(); pg.keyboard.press("Enter"); pg.wait_for_url("**/report", timeout=120000); time.sleep(20)
+    m = mark(); pg.keyboard.press("Enter"); pg.wait_for_url("**/report", timeout=120000); time.sleep(35)
     phase("4. Progress page, then report page loads (say-all)", m)
-    for i in range(3):
+    for i in range(4):
         m = mark(); pg.keyboard.press("Tab"); time.sleep(2.5); phase(f"5.{i+1} Tab on report", m)
+    m = mark(); pg.keyboard.press("Space"); time.sleep(4); phase("5.5 Space opens the layout map", m)
+    m = mark(); pg.get_by_role("button", name="Create corrected copy").focus(); time.sleep(2)
+    phase("6. Focus moves to Create corrected copy", m)
     m = mark(); pg.keyboard.press("Enter"); pg.wait_for_url("**/result", timeout=180000); time.sleep(15)
     phase("7. Enter on button: progress page, then result page loads", m)
     for i in range(4):
