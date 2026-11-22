@@ -5,9 +5,10 @@ from typing import Callable
 
 from slideproof.checks.distortion import check_distortion
 from slideproof.checks.offslide import check_offslide
+from slideproof.checks.overlap import check_overlap
 from slideproof.findings import Finding
 
-CHECKS: list[Callable] = [check_offslide, check_distortion]
+CHECKS: list[Callable] = [check_offslide, check_distortion, check_overlap]
 
 
 def run_checks(deck, render) -> list[Finding]:

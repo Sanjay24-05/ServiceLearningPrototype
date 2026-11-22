@@ -3,8 +3,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from slideproof.describe.copy import COPY, FALLBACK, GROUPED, Ctx
 from slideproof.describe.names import element_label
-from slideproof.describe.spatial import grid_location, portion_phrase
+from slideproof.describe.spatial import grid_location
 from slideproof.findings import Finding
 from slideproof.units import Rect
 
@@ -16,10 +17,6 @@ class Description:
     full: str
     fix_label: str | None
     change_log: str | None
-
-
-def _cap(s: str) -> str:
-    return s[:1].upper() + s[1:]
 
 
 def _slide_of(deck, n: int):
@@ -67,35 +64,14 @@ def describe(finding: Finding, deck) -> Description:
         label = element_label(el, _slide_of(deck, f.slide_index))
         loc = grid_location(el.bbox, deck.slide_rect)
 
-    if f.check_id == "C1" and grouped:
+    if grouped:
         c = f.measurements["grouped"]
-        headline = f"{c} objects stick out past the slide edges"
-        full = f"{c} objects on this slide stick out past the slide edges. Confidence: definite."
-    elif f.check_id == "C4" and grouped:
-        c = f.measurements["grouped"]
-        headline = f"{c} pictures are stretched out of shape"
-        full = f"{c} pictures on this slide are stretched out of shape. Confidence: definite."
-    elif f.check_id == "C1":
-        edges = f.measurements["edges"]
-        names = list(edges)
-        edge_txt = " and ".join(names)
-        word = "edges" if len(names) > 1 else "edge"
-        headline = f"{label} sticks out past the {edge_txt} {word}"
-        worst = max(names, key=lambda k: edges[k])
-        dim = "width" if worst in ("left", "right") else "height"
-        full = (f"{_cap(label)}, {loc}, sticks out past the {edge_txt} {word} of the slide "
-                f"by {portion_phrase(edges[worst])} of its {dim}. "
-                f"Part of it will be cut off when presented. Confidence: definite.")
-    elif f.check_id == "C4":
-        ratio = f.measurements["ratio"]
-        wide = f.measurements["direction"] == "wide"
-        headline = f"{label} is stretched {'wider' if wide else 'taller'} than its natural shape"
-        r = ratio if wide else 1 / ratio
-        full = (f"{_cap(label)}, {loc}, is shown {r:.1f} times as "
-                f"{'wide' if wide else 'tall'} as its natural shape, so it looks distorted. "
-                f"Confidence: definite.")
+        h, fl = GROUPED.get(f.check_id, FALLBACK)
+        headline, full = h.format(c=c, conf=f.confidence), fl.format(c=c, conf=f.confidence)
+    elif f.check_id in COPY:
+        headline, full = COPY[f.check_id](f, Ctx(deck, _slide_of(deck, n), el, label, loc))
     else:
-        raise ValueError(f"no description for check {f.check_id}")
+        headline, full = FALLBACK[0], FALLBACK[1].format(conf=f.confidence)
 
     slide = _slide_of(deck, n)
     prefix = f"Slide {n} (hidden slide)" if slide.hidden else f"Slide {n}"

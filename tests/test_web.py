@@ -56,7 +56,7 @@ def test_full_flow_demo_deck(client, demo_deck):
     run_id = r.headers["location"].split("/")[2]
     assert wait_done(client, run_id)["next"] == f"/runs/{run_id}/report"
     rep = client.get(f"/runs/{run_id}/report").text
-    assert "Report for demo.pptx" in rep and "Visible problems (2)" in rep
+    assert "Report for demo.pptx" in rep and "Visible problems (3)" in rep
     assert len(re.findall(r'type="checkbox"[^>]*\schecked', rep)) == 2
     assert "LibreOffice is not installed" in rep
     assert "(s)" not in rep

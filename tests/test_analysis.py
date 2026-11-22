@@ -11,7 +11,7 @@ def test_analyse_demo_without_libreoffice(monkeypatch, tmp_path, demo_deck):
     assert a.render.status == "skipped"
     assert a.skipped_note == "Note: text overflow and contrast checks were skipped because LibreOffice is not installed."
     assert msgs[:2] == ["Reading slides…", "Rendering slides…"] and msgs[-1] == "Checking slide 8 of 8…"
-    assert {f.check_id for f in a.report.visible} == {"C1", "C4"}
+    assert {f.check_id for f in a.report.visible} == {"C1", "C2", "C4"}
 
 
 def test_export_resolves_both_and_introduces_nothing(monkeypatch, tmp_path, demo_deck):

@@ -1,0 +1,75 @@
+"""Exact wording for each check: (headline, full) builders and grouped variants (spec §8.1)."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Callable
+
+from slideproof.describe.names import element_label
+from slideproof.describe.spatial import coverage_phrase, grid_location, portion_phrase
+
+
+def cap(s: str) -> str:
+    return s[:1].upper() + s[1:]
+
+
+@dataclass
+class Ctx:
+    deck: object
+    slide: object
+    el: object       # first element of the finding
+    label: str       # lower-case label of el
+    loc: str         # grid location of el
+
+    def other(self, element_id: str) -> tuple[str, str]:
+        e = self.deck.element(element_id)
+        return element_label(e, self.slide), grid_location(e.bbox, self.deck.slide_rect)
+
+
+def _c1(f, c: Ctx):
+    edges = f.measurements["edges"]
+    names = list(edges)
+    edge_txt = " and ".join(names)
+    word = "edges" if len(names) > 1 else "edge"
+    worst = max(names, key=lambda k: edges[k])
+    dim = "width" if worst in ("left", "right") else "height"
+    return (f"{c.label} sticks out past the {edge_txt} {word}",
+            f"{cap(c.label)}, {c.loc}, sticks out past the {edge_txt} {word} of the slide "
+            f"by {portion_phrase(edges[worst])} of its {dim}. "
+            f"Part of it will be cut off when presented. Confidence: definite.")
+
+
+def _c2(f, c: Ctx):
+    lower, lower_loc = c.other(f.element_ids[1])
+    cov = coverage_phrase(f.measurements["coverage"])
+    tail = ("Your audience may not be able to read the covered text."
+            if f.measurements["lower_is_text"]
+            else "Your audience may not be able to see the covered part.")
+    return (f"{c.label} covers {cov} {lower}",
+            f"{cap(c.label)}, {c.loc}, sits on top of {cov} {lower}, {lower_loc}. "
+            f"{tail} Confidence: {f.confidence}.")
+
+
+def _c4(f, c: Ctx):
+    ratio = f.measurements["ratio"]
+    wide = f.measurements["direction"] == "wide"
+    r = ratio if wide else 1 / ratio
+    return (f"{c.label} is stretched {'wider' if wide else 'taller'} than its natural shape",
+            f"{cap(c.label)}, {c.loc}, is shown {r:.1f} times as "
+            f"{'wide' if wide else 'tall'} as its natural shape, so it looks distorted. "
+            f"Confidence: definite.")
+
+
+COPY: dict[str, Callable] = {"C1": _c1, "C2": _c2, "C4": _c4}
+
+# (headline, full) for findings grouped by the prioritiser; {c} = count, {conf} = confidence.
+GROUPED: dict[str, tuple[str, str]] = {
+    "C1": ("{c} objects stick out past the slide edges",
+           "{c} objects on this slide stick out past the slide edges. Confidence: definite."),
+    "C2": ("{c} objects overlap each other",
+           "{c} objects on this slide overlap each other. Confidence: {conf}."),
+    "C4": ("{c} pictures are stretched out of shape",
+           "{c} pictures on this slide are stretched out of shape. Confidence: definite."),
+}
+
+FALLBACK = ("a layout problem was found",
+            "A layout problem was found on this slide. Confidence: {conf}.")
