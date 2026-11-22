@@ -76,3 +76,14 @@ def test_generic_image_filenames_are_not_names(tiny_deck, name):
 @pytest.mark.parametrize("name", ["team.jpg", "chart-q3.png"])
 def test_real_image_filenames_still_shown(tiny_deck, name):
     assert _pic_label(tiny_deck, name) == f'picture "{name}"'
+
+
+def test_generic_alt_text_is_not_a_name_but_real_alt_is(tiny_deck):
+    deck = load_deck(tiny_deck([dict(kind="picture", name="n", x=1, y=1, w=2, h=2)]))
+    el = deck.slides[0].elements[0]
+    slide = deck.slides[0]
+    el.image.filename = None
+    el.image.alt = "image.png"
+    assert element_label(el, slide) == "picture 1"
+    el.image.alt = "Bar chart of harvest results"
+    assert element_label(el, slide) == 'picture "Bar chart of harvest results"'

@@ -211,7 +211,7 @@ Thresholds are starting values to be tuned against the demo deck and a corpus of
 
 | ID | Check | Method | Default severity | Reliability |
 |---|---|---|---|---|
-| C1 | **Off-slide content** | Element bbox outside slide rect. Flag if > 2% of the element's area is outside, or any rendered text span is outside | visible (minor if < 10% and no text cut) | High |
+| C1 | **Off-slide content** | Element bbox outside slide rect. Flag if > 2% of the element's area is outside, or any rendered text span is outside | visible (minor if < 10% and no text cut) | High. Zero-width or zero-height lines are not checked yet |
 | C2 | **Overlap** | Pairwise intersection of **content boxes** on each slide (O(n²); n is small). Magnitude = intersection ÷ content area of the *lower* element. Flag when the upper element is filled or a picture and covers ≥ 5% of a lower element's content; or when two text elements' content boxes intersect. See the content-box rule below the table | visible | High geometrically; intent is ambiguous, so exemptions apply (7.2) |
 | C3 | **Text overflow** | Union of rendered spans linked to an element extends beyond its bbox by > 0.1 inch (vertical or horizontal) | visible | Medium (depends on rendering fidelity) → confidence "likely" |
 | C4 | **Distorted image** | displayed aspect ÷ native aspect after crop. Flag if it deviates > 5% | visible if > 15%, otherwise minor | High |

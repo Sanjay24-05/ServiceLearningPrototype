@@ -28,6 +28,9 @@ def element_label(el, slide) -> str:
     if kind == "picture":
         alt = (el.image.alt or "").strip() if el.image else ""
         fname = (el.image.filename or "").strip() if el.image else ""
+        # Tools often fill alt text with the file name; both count as no name.
+        if _GENERIC_IMAGE_NAME.match(alt):
+            alt = ""
         if _GENERIC_IMAGE_NAME.match(fname):
             fname = ""
         name = alt or fname
