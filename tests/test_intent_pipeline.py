@@ -130,3 +130,45 @@ def test_grouping_never_mixes_tiers(make_finding):
     assert [f.measurements["grouped"] for f in r.intentional] == [6]
     assert [f.measurements["grouped"] for f in r.visible] == [6]
     assert set(r.intentional[0].element_ids) == {f"e{i}" for i in range(6)}
+
+
+def test_harmless_warning_during_load_does_not_disable_model(monkeypatch):
+    import joblib
+    import warnings
+    real = joblib.load
+
+    def noisy(*a, **k):
+        warnings.warn("harmless", DeprecationWarning)
+        return real(*a, **k)
+
+    monkeypatch.setattr(joblib, "load", noisy)
+    intent._cache.clear()
+    try:
+        assert intent._load() is not None
+    finally:
+        intent._cache.clear()
+
+
+def test_version_warning_during_load_disables_model(monkeypatch):
+    import joblib
+    import warnings
+    from sklearn.exceptions import InconsistentVersionWarning
+    real = joblib.load
+
+    def noisy(*a, **k):
+        warnings.warn(InconsistentVersionWarning(
+            estimator_name="x", current_sklearn_version="1", original_sklearn_version="0"))
+        return real(*a, **k)
+
+    monkeypatch.setattr(joblib, "load", noisy)
+    intent._cache.clear()
+    try:
+        assert intent._load() is None
+    finally:
+        intent._cache.clear()
+
+
+def test_judged_findings_carry_repeat_count(tmp_path):
+    _, _, (after, _) = _judged(_logo_deck(tmp_path / "logo.pptx"))
+    c1 = [f for f in after if f.check_id == "C1"]
+    assert all(f.measurements["intent_repeats"] == 5 for f in c1)

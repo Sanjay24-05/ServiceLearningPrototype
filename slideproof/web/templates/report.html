@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% set v = rep.visible|length %}
 {% set m = rep.minor|length %}
+{% set k = rep.intentional|length %}
 {% macro finding_list(items) %}
 {% for it in items %}
 <section aria-labelledby="{{ it.f.id }}">
@@ -8,7 +9,7 @@
 <p>{{ it.d.full }}</p>
 {% if it.f.fix %}
 <fieldset><legend>Fix for this problem</legend>
-<input type="checkbox" name="fix" value="{{ it.f.fix.fix_id }}" id="fix-{{ it.f.id }}"{% if it.f.fix.safety == "safe" %} checked{% endif %}>
+<input type="checkbox" name="fix" value="{{ it.f.fix.fix_id }}" id="fix-{{ it.f.id }}"{% if it.preticked and it.f.fix.safety == "safe" %} checked{% endif %}>
 <label for="fix-{{ it.f.id }}">{{ it.d.fix_label }}</label>
 </fieldset>
 {% else %}
@@ -28,15 +29,17 @@
 <script>
 document.getElementById("top").focus();
 </script>
-{% if v == 0 and m == 0 %}
+{% set tail = ", " ~ k ~ " probably intentional" if k else "" %}
+{% if v == 0 and m == 0 and k == 0 %}
 <p>{{ rep.slides_checked|plural("slide") }} checked. No problems found. {{ coverage }}</p>
 {% elif v == 0 %}
-<p>{{ rep.slides_checked|plural("slide") }} checked. No visible problems. {{ m }} minor. {{ coverage }}</p>
+<p>{{ rep.slides_checked|plural("slide") }} checked. No visible problems. {{ m }} minor{{ tail }}. {{ coverage }}</p>
 {% else %}
-<p>{{ rep.slides_checked|plural("slide") }} checked. {{ v|plural("visible problem") }} on {{ rep.slides_with_visible|plural("slide") }}, {{ m }} minor. {{ coverage }}</p>
+<p>{{ rep.slides_checked|plural("slide") }} checked. {{ v|plural("visible problem") }} on {{ rep.slides_with_visible|plural("slide") }}, {{ m }} minor{{ tail }}. {{ coverage }}</p>
 {% endif %}
 {% if unchecked %}<p>{{ unchecked }}</p>{% endif %}
 {% if note %}<p>{{ note }}</p>{% endif %}
+{% if intent_note %}<p>{{ intent_note }}</p>{% endif %}
 <form method="post" action="/runs/{{ run.id }}/export">
 {% if v %}
 <h2>Visible problems ({{ v }})</h2>
@@ -45,6 +48,11 @@ document.getElementById("top").focus();
 {% if m %}
 <h2>Minor polish ({{ m }})</h2>
 {{ finding_list(minor) }}
+{% endif %}
+{% if k %}
+<h2>Probably intentional ({{ k }})</h2>
+<p>Slide Proof's model thinks these look like deliberate design. Check them if you are unsure.</p>
+{{ finding_list(intentional) }}
 {% endif %}
 <h2>Apply fixes</h2>
 <p>Selected fixes are applied to a copy. Your original file is not changed.</p>

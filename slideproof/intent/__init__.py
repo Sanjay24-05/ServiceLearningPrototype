@@ -23,15 +23,36 @@ def _load():
     try:
         import joblib
         import sklearn
+        import sklearn.ensemble  # noqa: F401  (import now: import-time warnings are harmless)
+        import sklearn.linear_model  # noqa: F401
+        import sklearn.pipeline  # noqa: F401
+        import sklearn.preprocessing  # noqa: F401
+        from sklearn.exceptions import InconsistentVersionWarning
         meta = json.loads((MODEL_DIR / "features.json").read_text(encoding="utf-8"))
         if meta.get("sklearn") == sklearn.__version__ and meta.get("features") == FEATURES:
             with warnings.catch_warnings():
-                warnings.simplefilter("error")  # a pickle/version warning means do not trust it
+                # only a version-mismatch warning means do not trust the pickle
+                warnings.simplefilter("error", InconsistentVersionWarning)
                 bundle = (joblib.load(MODEL_DIR / "model.joblib"), meta)
     except Exception:
         bundle = None
     _cache["dir"], _cache["bundle"] = MODEL_DIR, bundle
     return bundle
+
+
+def available() -> bool:
+    return _load() is not None
+
+
+def accuracy() -> dict | None:
+    """{'mistake_recall': %, 'deliberate_recall': %} (whole percents) for the shipped model, or None."""
+    if not available():
+        return None
+    try:
+        m = json.loads((MODEL_DIR / "metrics.json").read_text(encoding="utf-8"))
+        return {k: round(float(m[k]) * 100) for k in ("mistake_recall", "deliberate_recall")}
+    except Exception:
+        return None
 
 
 def threshold() -> float:
@@ -79,6 +100,7 @@ def judge(findings: list[Finding], deck) -> tuple[list[Finding], str | None]:
         if id(f) in judged:
             p, vec = judged[id(f)]
             f = replace(f, measurements={**f.measurements, "intent_p": p,
-                                         "intent_reasons": _reasons(vec)})
+                                         "intent_reasons": _reasons(vec),
+                                         "intent_repeats": int(vec[FEATURES.index("repeats")])})
         out.append(f)
     return out, None

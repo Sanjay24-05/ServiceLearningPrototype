@@ -10,6 +10,10 @@ text: Titles out of line with the rest
 text: Stray fonts
 text: Empty or stray objects
 text: Not checked yet: text overflow, contrast and text size.
+heading level 2: What "Probably intentional" means
+text: Some things that look like mistakes are deliberate design: a logo that bleeds off a corner, a band that runs along an edge, a background shape behind everything. Slide Proof has a small model that runs on this computer and learned from example decks which patterns usually look deliberate. When it is fairly sure, the finding goes under "Probably intentional" with the reasons, and its fix is not ticked for you. It is a guess, so check those findings if you are unsure.
+heading level 2: How accurate the model is
+text: On synthetic test decks it never saw, it kept 96% of real mistakes in the main lists and recognised 95% of deliberate designs. All training data is synthetic; see the model card.
 heading level 2: How fixes work
 text: Fixes are only applied to a copy of your file, never the original. After fixing, Slide Proof checks the copy again and undoes any fix that did not work or caused a new problem.
 heading level 2: Your privacy

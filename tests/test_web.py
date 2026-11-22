@@ -285,3 +285,77 @@ def test_report_has_layout_details(client, demo_deck):
     rep = client.get(f"/runs/{run_id}/report").text
     assert "<summary>Layout of slide 4</summary>" in rep
     assert re.search(r"<summary>Layout of slide 4</summary>\s*<ol>\s*<li>The title, in the top", rep)
+
+
+def _logo_run(client, tmp_path):
+    from tests.test_intent_pipeline import _logo_deck
+    p = _logo_deck(tmp_path / "logo.pptx")
+    run_id = upload(client, "logo.pptx", p.read_bytes())
+    wait_done(client, run_id)
+    return run_id, client.get(f"/runs/{run_id}/report").text
+
+
+def test_report_shows_probably_intentional_section(client, tmp_path):
+    run_id, rep = _logo_run(client, tmp_path)
+    assert "<h2>Probably intentional (6)</h2>" in rep
+    assert ("<p>Slide Proof's model thinks these look like deliberate design. "
+            "Check them if you are unsure.</p>") in rep
+    assert re.search(r"Probably intentional \(\d+% sure\): the same object appears in the same "
+                     r"place on 5 other slides and it runs along the edge of the slide like a "
+                     r"design element\.", rep)
+    assert "Visible problems" not in rep and "Minor polish" not in rep
+    assert 'name="fix"' in rep
+    assert not re.search(r'type="checkbox"[^>]*\schecked', rep)
+    assert rep.index("<h2>Probably intentional") < rep.index("<h2>Apply fixes")
+    assert "A small on-device model sorts findings that look like deliberate design into" in rep
+
+
+def test_summary_counts_intentional(client, tmp_path):
+    run_id, rep = _logo_run(client, tmp_path)
+    assert "6 slides checked. No visible problems. 0 minor, 6 probably intentional. " in rep
+
+
+def test_summary_omits_clause_when_none(client, demo_deck):
+    run_id = upload(client, "demo.pptx", demo_deck[0].read_bytes())
+    wait_done(client, run_id)
+    rep = client.get(f"/runs/{run_id}/report").text
+    assert " probably intentional." not in rep
+    assert "Probably intentional (" not in rep
+
+
+def test_unticked_intentional_fix_still_applies_when_ticked(client, tmp_path):
+    run_id, rep = _logo_run(client, tmp_path)
+    fixes = re.findall(r'value="(F\d:[^"]+)"', rep)
+    assert fixes
+    r = client.post(f"/runs/{run_id}/export", data={"fix": fixes[:1]}, follow_redirects=False)
+    assert r.status_code == 303
+    assert wait_done(client, run_id)["next"] == f"/runs/{run_id}/result"
+    res = client.get(f"/runs/{run_id}/result").text
+    assert "1 fix applied" in res
+
+
+def test_about_shows_model_accuracy(client):
+    import json
+    from slideproof import intent
+    m = json.loads((intent.MODEL_DIR / "metrics.json").read_text())
+    html = client.get("/about").text
+    assert '<h2>What "Probably intentional" means</h2>' in html
+    assert "<h2>How accurate the model is</h2>" in html
+    assert f"kept {round(m['mistake_recall'] * 100)}% of real mistakes" in html
+    assert f"recognised {round(m['deliberate_recall'] * 100)}% of deliberate designs" in html
+    assert "All training data is synthetic" in html
+    assert html.index("What it checks") < html.index("How accurate")
+    assert html.index("How accurate") < html.index("How fixes work")
+
+
+def test_about_and_report_without_model(client, tmp_path, monkeypatch):
+    from slideproof import intent
+    monkeypatch.setattr(intent, "MODEL_DIR", tmp_path)
+    intent._cache.clear()
+    try:
+        html = client.get("/about").text
+        assert "How accurate the model is" not in html
+        assert "A small on-device model" not in html
+        assert "How fixes work" in html
+    finally:
+        intent._cache.clear()

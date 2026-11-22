@@ -103,3 +103,14 @@ def test_every_check_has_grouped_copy():
     # Review issue 6: any check can be grouped by the prioritiser (> 5 on one slide).
     from slideproof.describe.copy import COPY, GROUPED
     assert set(COPY) <= set(GROUPED)
+
+
+def test_intent_sentence_copy():
+    from slideproof.describe.copy import INTENT_GROUPED, intent_sentence
+    assert intent_sentence({"intent_p": 0.934, "intent_reasons": ["repeats", "edges"],
+                            "intent_repeats": 5}) == (
+        "Probably intentional (93% sure): the same object appears in the same place on 5 other "
+        "slides and it runs along the edge of the slide like a design element.")
+    assert intent_sentence({"intent_p": 0.9, "intent_reasons": ["no_text"]}) == (
+        "Probably intentional (90% sure): it contains no text.")
+    assert INTENT_GROUPED == "Probably intentional: the model judged these objects as deliberate design."

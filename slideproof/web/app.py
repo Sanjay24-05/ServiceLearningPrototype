@@ -9,11 +9,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from slideproof import intent
 from slideproof.analysis import analyse
 from slideproof.demo_deck import build_demo_deck
 from slideproof.describe import describe
 from slideproof.describe.layout_map import slide_map
-from slideproof.describe.coverage import (cannot_check_sentence, checked_sentence,
+from slideproof.describe.coverage import (INTENT_COVERAGE, cannot_check_sentence, checked_sentence,
                                           checks_run_items, not_checked_sentence, plural,
                                           unchecked_sentence)
 from slideproof.verify import export_and_verify
@@ -47,16 +48,17 @@ def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
         except KeyError:
             return None
 
-    def items(run: Run, findings) -> list[dict]:
+    def items(run: Run, findings, intentional: bool = False) -> list[dict]:
         deck = run.analysis.deck
         out = []
         for f in findings:
-            d = describe(f, deck)
+            d = describe(f, deck, intentional)
             t = deck.slides[f.slide_index - 1].title_text
             title = (f'Slide {f.slide_index}, "{t}": {d.headline}' if t
                      else f"Slide {f.slide_index}: {d.headline}")
             out.append({"f": f, "d": d, "title": title,
-                        "layout": slide_map(deck.slides[f.slide_index - 1], deck)})
+                        "layout": slide_map(deck.slides[f.slide_index - 1], deck),
+                        "preticked": not intentional})
         return out
 
     def _start_analysis(run: Run, path: Path):
@@ -75,6 +77,7 @@ def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
     def about(request: Request):
         return page(request, "about.html", checks=checks_run_items(),
                     not_checked=not_checked_sentence(),
+                    accuracy=intent.accuracy(),
                     cannot_check=cannot_check_sentence())
 
     @app.post("/check")
@@ -140,10 +143,12 @@ def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
         rep = run.analysis.report
         return page(request, "report.html", run=run, rep=rep,
                     note=run.analysis.skipped_note,
-                    coverage=checked_sentence(),
+                    intent_note=run.analysis.intent_note,
+                    coverage=checked_sentence() + (f" {INTENT_COVERAGE}" if intent.available() else ""),
                     unchecked=unchecked_sentence(run.analysis.deck),
                     visible=items(run, rep.visible),
-                    minor=items(run, rep.minor))
+                    minor=items(run, rep.minor),
+                    intentional=items(run, rep.intentional, True))
 
     @app.post("/runs/{run_id}/export")
     async def export(request: Request, run_id: str,
