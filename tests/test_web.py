@@ -1,33 +1,7 @@
 import re
 import time
 
-import pytest
-from fastapi.testclient import TestClient
-
-from slideproof.web.app import create_app
-
-
-@pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("SOFFICE_PATH", str(tmp_path / "missing-soffice.exe"))
-    return TestClient(create_app(tmp_path / "runs"), base_url="http://127.0.0.1")
-
-
-def wait_done(client, run_id, cap=30):
-    end = time.time() + cap
-    while time.time() < end:
-        s = client.get(f"/runs/{run_id}/status").json()
-        if s["state"] != "working":
-            return s
-        time.sleep(0.1)
-    raise AssertionError("run did not finish in time")
-
-
-def upload(client, name, data):
-    r = client.post("/check", files={"file": (name, data)},
-                    follow_redirects=False)
-    assert r.status_code == 303
-    return r.headers["location"].split("/")[2]
+from tests.conftest import upload, wait_done
 
 
 def full_flow(client, demo_deck, name):

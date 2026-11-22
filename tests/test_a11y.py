@@ -96,3 +96,16 @@ def test_report_heading_outline(live_server, demo_deck, page):
     assert [h[0] for h in heads[2:7]] == ["h3"] * 5
     assert [h[1].split(",")[0] for h in heads[2:7]] == ["Slide 4", "Slide 4", "Slide 2", "Slide 3", "Slide 5"]
     assert heads[-1] == ["h2", "Apply fixes"]
+
+
+def test_report_contrast_dark_mode(live_server, demo_deck, page):
+    page.emulate_media(color_scheme="dark")
+    reach_report(page, live_server, demo_deck[0])
+    assert_no_serious(page, "report (dark)")
+
+
+def test_focus_outline_visible(live_server, page):
+    page.goto(live_server + "/")
+    page.keyboard.press("Tab")
+    outline = page.evaluate("getComputedStyle(document.activeElement).outlineStyle")
+    assert outline not in ("none", "")

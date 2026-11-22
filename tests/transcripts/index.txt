@@ -6,3 +6,4 @@ text: LibreOffice was not found. Text overflow and contrast checks will be skipp
 text: PowerPoint file (.pptx)
 file upload: PowerPoint file (.pptx)
 button: Check slides
+link: How Slide Proof works
