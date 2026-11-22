@@ -5,11 +5,11 @@ from pathlib import Path
 
 from pptx import Presentation
 from pptx.enum.dml import MSO_COLOR_TYPE, MSO_FILL
-from pptx.enum.text import MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
 from pptx.oxml.ns import qn
 from pptx.shapes.group import GroupShape
 
+from slideproof import text_style
 from slideproof.model import DeckModel, Element, ImageInfo, RunStyle, SlideModel
 from slideproof.units import Rect, rotated_aabb
 
@@ -129,13 +129,17 @@ def _walk(shapes, transforms, group_id, sm: SlideModel, counter) -> None:
         text = None
         runs: list[RunStyle] = []
         paragraphs: list[tuple[int, float | None]] = []
-        anchor, insets = "top", _DEFAULT_INSETS
+        anchor, insets, align = "top", _DEFAULT_INSETS, "left"
         if getattr(shape, "has_text_frame", False):
             tf = shape.text_frame
             text = tf.text
             runs = [_run_style(r) for p in tf.paragraphs for r in p.runs]
-            paragraphs = [(len(p.text), _para_size(p)) for p in tf.paragraphs]
-            anchor, insets = _text_layout(tf)
+            try:
+                style = text_style.resolve(shape, ph_type)
+                paragraphs, anchor, insets, align = (style.paragraphs, style.anchor,
+                                                     style.insets, style.align)
+            except Exception:
+                paragraphs = [(len(p.text), None) for p in tf.paragraphs]
         if kind == "title" and sm.title_text is None:
             sm.title_text = text
         sm.elements.append(Element(
@@ -145,7 +149,7 @@ def _walk(shapes, transforms, group_id, sm: SlideModel, counter) -> None:
             filled=kind == "picture" or _is_filled(shape), text=text, runs=runs,
             image=image, placeholder_type=ph_type, group_id=group_id,
             fixable=fixable, outlined=_is_outlined(shape), paragraphs=paragraphs,
-            anchor=anchor, insets=insets))
+            anchor=anchor, insets=insets, align=align))
         counter[0] += 1
 
 
@@ -188,30 +192,7 @@ def _kind_inner(shape):
 
 
 _DEFAULT_INSETS = (91440, 45720, 91440, 45720)
-_ANCHORS = {MSO_ANCHOR.MIDDLE: "middle", MSO_ANCHOR.BOTTOM: "bottom"}
 
-
-def _para_size(paragraph) -> float | None:
-    for r in paragraph.runs:
-        try:
-            if r.font.size is not None:
-                return float(r.font.size.pt)
-        except Exception:
-            pass
-    return None
-
-
-def _text_layout(tf) -> tuple[str, tuple[int, int, int, int]]:
-    try:
-        anchor = _ANCHORS.get(tf.vertical_anchor, "top")
-    except Exception:
-        anchor = "top"
-    try:
-        insets = tuple(int(v) if v is not None else d for v, d in zip(
-            (tf.margin_left, tf.margin_top, tf.margin_right, tf.margin_bottom), _DEFAULT_INSETS))
-    except Exception:
-        insets = _DEFAULT_INSETS
-    return anchor, insets
 
 
 def _is_outlined(shape) -> bool:

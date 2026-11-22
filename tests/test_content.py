@@ -62,3 +62,68 @@ def test_unfilled_shape_without_text_has_no_content(tmp_path):
     sh.fill.background()
     p = tmp_path / "u.pptx"; prs.save(p)
     assert content_box(_el(p)) is None
+
+
+# ---- review issue 2: inherited size / alignment / autofit ----
+from io import BytesIO  # noqa: E402
+
+from PIL import Image  # noqa: E402
+
+from slideproof.checks.overlap import check_overlap  # noqa: E402
+
+
+def _png(w=400, h=400):
+    b = BytesIO(); Image.new("RGB", (w, h), (200, 60, 60)).save(b, "PNG"); b.seek(0); return b
+
+
+def test_title_inherits_size_and_centre_alignment(tmp_path):
+    prs = Presentation()
+    s = prs.slides.add_slide(prs.slide_layouts[1]); s.shapes.title.text = "Week 1 results"
+    p = tmp_path / "t.pptx"; prs.save(p)
+    title = next(e for e in load_deck(p).slides[0].elements if e.kind == "title")
+    assert title.paragraphs == [(len("Week 1 results"), 44.0)]
+    assert title.align == "center"
+
+
+def test_body_inherits_size(tmp_path):
+    prs = Presentation()
+    s = prs.slides.add_slide(prs.slide_layouts[1]); s.shapes.title.text = "T"
+    s.placeholders[1].text = "One\nTwo"
+    p = tmp_path / "b.pptx"; prs.save(p)
+    body = next(e for e in load_deck(p).slides[0].elements if e.kind == "body")
+    assert [size for _, size in body.paragraphs] == [32.0, 32.0]
+
+
+def test_autofit_font_scale_applies(tmp_path):
+    from pptx.oxml.ns import qn
+    prs = Presentation()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    tb = s.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(1))
+    tb.text_frame.text = "Shrunk"; tb.text_frame.paragraphs[0].runs[0].font.size = Pt(40)
+    body_pr = tb.text_frame._txBody.find(qn("a:bodyPr"))
+    for child in list(body_pr):
+        body_pr.remove(child)
+    fit = body_pr.makeelement(qn("a:normAutofit"), {"fontScale": "50000"})
+    body_pr.append(fit)
+    p = tmp_path / "a.pptx"; prs.save(p)
+    assert load_deck(p).slides[0].elements[0].paragraphs == [(6, 20.0)]
+
+
+def test_centred_title_and_corner_logo_no_overlap(tmp_path):
+    prs = Presentation()
+    for i in range(3):
+        s = prs.slides.add_slide(prs.slide_layouts[1]); s.shapes.title.text = f"Week {i} results"
+        s.placeholders[1].text = "Point one\nPoint two"
+        s.shapes.add_picture(_png(), Inches(0.15), Inches(0.15), Inches(0.9), Inches(0.9))
+    p = tmp_path / "k.pptx"; prs.save(p)
+    assert check_overlap(load_deck(p), None) == []
+
+
+def test_picture_over_inherited_size_bullets_found(tmp_path):
+    prs = Presentation()
+    s = prs.slides.add_slide(prs.slide_layouts[1]); s.shapes.title.text = "Results"
+    s.placeholders[1].text = "\n".join(f"Bullet {i}: a line of reasonably long text here" for i in range(6))
+    s.shapes.add_picture(_png(1600, 1200), Inches(4.5), Inches(4.0), Inches(4.5), Inches(2.6))
+    p = tmp_path / "h.pptx"; prs.save(p)
+    fs = check_overlap(load_deck(p), None)
+    assert len(fs) == 1 and fs[0].measurements["lower_is_text"] is True

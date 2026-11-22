@@ -46,7 +46,12 @@ def _estimated_text(el: Element) -> Rect:
         text_w = max(text_w, min(usable_w, line_w))
     text_h = min(int(text_h), inner_h)
     text_w = int(text_w)
-    x = f.x + il
+    if el.align == "center":
+        x = f.x + il + (usable_w - text_w) // 2
+    elif el.align == "right":
+        x = f.x + il + usable_w - text_w
+    else:
+        x = f.x + il
     if el.anchor == "middle":
         y = f.y + it + (inner_h - text_h) // 2
     elif el.anchor == "bottom":

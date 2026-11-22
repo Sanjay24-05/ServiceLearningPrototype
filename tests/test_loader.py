@@ -157,7 +157,7 @@ def test_paragraph_sizes_and_middle_anchor(tmp_path):
     tf.vertical_anchor = MSO_ANCHOR.MIDDLE
     p = tmp_path / "t.pptx"; prs.save(p)
     e = load_deck(p).slides[0].elements[0]
-    assert e.paragraphs == [(5, 30.0), (11, None)]
+    assert e.paragraphs == [(5, 30.0), (11, 18.0)]  # second size inherited from the theme
     assert e.anchor == "middle"
 
 
