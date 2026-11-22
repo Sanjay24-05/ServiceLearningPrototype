@@ -52,3 +52,21 @@ def test_demo_build_failure_shows_error(client, monkeypatch):
 
 def test_index_has_demo_button(client):
     assert '<button>Try the demo presentation</button>' in client.get("/").text
+
+
+def test_about_page(client):
+    html = client.get("/about").text
+    assert "<title>How Slide Proof works – Slide Proof</title>" in html
+    assert "<h1>How Slide Proof works</h1>" in html
+    for h2 in ("What it checks", "How fixes work", "Your privacy", "What it cannot do yet"):
+        assert f"<h2>{h2}</h2>" in html
+    assert "<li>Overlapping objects</li>" in html
+    assert "Not checked yet: text overflow, contrast and text size." in html
+    assert "<li>It does not check text overflow, contrast or text size yet.</li>" in html
+
+
+def test_about_lists_follow_coverage(client):
+    from slideproof.describe.coverage import CHECKS_RUN
+    html = client.get("/about").text
+    for item in CHECKS_RUN:
+        assert f"<li>{item[0].upper() + item[1:]}</li>" in html

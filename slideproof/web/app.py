@@ -13,7 +13,8 @@ from slideproof.analysis import analyse
 from slideproof.demo_deck import build_demo_deck
 from slideproof.describe import describe
 from slideproof.describe.layout_map import slide_map
-from slideproof.describe.coverage import (checked_sentence, plural,
+from slideproof.describe.coverage import (cannot_check_sentence, checked_sentence,
+                                          checks_run_items, not_checked_sentence, plural,
                                           unchecked_sentence)
 from slideproof.verify import export_and_verify
 from slideproof.web.runs import Run, RunStore, startup_check
@@ -69,6 +70,12 @@ def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
     @app.get("/")
     def index(request: Request):
         return page(request, "index.html", problems=startup_check())
+
+    @app.get("/about")
+    def about(request: Request):
+        return page(request, "about.html", checks=checks_run_items(),
+                    not_checked=not_checked_sentence(),
+                    cannot_check=cannot_check_sentence())
 
     @app.post("/check")
     async def check(request: Request):

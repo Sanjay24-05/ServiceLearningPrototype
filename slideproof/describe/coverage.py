@@ -24,6 +24,19 @@ def _join(items, comma: bool = False) -> str:
     return ", ".join(items[:-1]) + (", and " if comma else " and ") + items[-1]
 
 
+def checks_run_items() -> list[str]:
+    """CHECKS_RUN with the first letter capitalised, for list items."""
+    return [x[0].upper() + x[1:] for x in CHECKS_RUN]
+
+
+def not_checked_sentence() -> str:
+    return f"Not checked yet: {_join(NOT_CHECKED_YET)}."
+
+
+def cannot_check_sentence() -> str:
+    return f"It does not check {_join(NOT_CHECKED_YET).replace(' and ', ' or ')} yet."
+
+
 def checked_sentence() -> str:
     n = len(CHECKS_RUN)
     lead = f"This version checks {_NUMBER_WORDS.get(n, str(n))} thing{'' if n == 1 else 's'}: "

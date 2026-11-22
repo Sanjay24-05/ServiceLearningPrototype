@@ -75,6 +75,8 @@ def test_pages_have_no_serious_axe_violations(live_server, demo_deck, page):
     page.get_by_role("button", name="Create corrected copy").click()
     page.wait_for_url("**/result", timeout=NAV_TIMEOUT)
     assert_no_serious(page, "result")
+    page.goto(live_server + "/about")
+    assert_no_serious(page, "about")
 
 
 def test_report_focuses_h1_on_load(live_server, demo_deck, page):
@@ -102,6 +104,8 @@ def test_report_contrast_dark_mode(live_server, demo_deck, page):
     page.emulate_media(color_scheme="dark")
     reach_report(page, live_server, demo_deck[0])
     assert_no_serious(page, "report (dark)")
+    page.goto(live_server + "/about")
+    assert_no_serious(page, "about (dark)")
 
 
 def test_focus_outline_visible(live_server, page):

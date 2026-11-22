@@ -1,0 +1,22 @@
+focus: page body (nothing focused)
+heading level 1: How Slide Proof works
+text: Slide Proof checks how your slides will look to a sighted audience and tells you, in words, what a sighted person would notice. It can also fix some problems for you, on a copy.
+heading level 2: What it checks
+text: Objects that stick out past the slide edge
+text: Stretched pictures
+text: Overlapping objects
+text: Low-resolution pictures
+text: Titles out of line with the rest
+text: Stray fonts
+text: Empty or stray objects
+text: Not checked yet: text overflow, contrast and text size.
+heading level 2: How fixes work
+text: Fixes are only applied to a copy of your file, never the original. After fixing, Slide Proof checks the copy again and undoes any fix that did not work or caused a new problem.
+heading level 2: Your privacy
+text: Your file stays on this computer. Nothing is uploaded to the internet, and files from earlier sessions are deleted each time Slide Proof starts.
+heading level 2: What it cannot do yet
+text: It does not check text overflow, contrast or text size yet.
+text: It does not look inside charts and diagrams.
+text: Its judgement of overlap uses an estimate of where text sits; a later version will use the rendered slide.
+link: Check a presentation
+link: How Slide Proof works
