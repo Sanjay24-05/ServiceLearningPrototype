@@ -1,6 +1,6 @@
 # Slide Proof: "Mistake or on purpose?" model, and a presentable prototype
 
-**Design document · 2026-11-22 · Status: draft for approval (revised after builder check; data approach B chosen by the user)**
+**Design document · 2026-11-22 · Status: Approved 2026-11-22 (data approach B chosen by the user)**
 Builds on: `docs/superpowers/specs/2026-11-20-slide-layout-checker-design.md` (the main spec) and M0–M2 (merged or in PR on `m2-geometry`).
 
 ---

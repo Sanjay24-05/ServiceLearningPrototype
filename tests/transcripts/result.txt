@@ -8,3 +8,4 @@ text: Slide 5: the title moved to the same position as on the other slides.
 text: Slide 8: an empty text box was removed.
 link: Download demo_deck (checked).pptx
 link: Check another file
+link: How Slide Proof works

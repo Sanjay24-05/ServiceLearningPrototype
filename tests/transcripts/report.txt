@@ -39,3 +39,4 @@ disclosure collapsed: Layout of slide 8
 heading level 2: Apply fixes
 text: Selected fixes are applied to a copy. Your original file is not changed.
 button: Create corrected copy
+link: How Slide Proof works

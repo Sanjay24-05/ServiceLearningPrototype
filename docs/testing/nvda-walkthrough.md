@@ -8,6 +8,8 @@ Use NVDA's Speech Viewer with the screen on (NVDA menu, Tools, Speech Viewer). U
 2. Progress updates are neither spammy nor silent.
 3. Applying the fixes and downloading the corrected copy both work.
 
+Every page ends with a "How Slide Proof works" link in the footer; check it reads as a link and opens the explanation page.
+
 ## Full walkthrough
 
 To be performed by the developer with NVDA + Firefox and NVDA + Chrome, screen off.
@@ -20,6 +22,7 @@ Run the whole list once in Firefox and once in Chrome.
 |---|------|----------|-------------------|---------------|------------------|--------------|
 | 1 | Start `python -m slideproof`; open the page | NVDA reads the page title "Check slide layout – Slide Proof" | | | | |
 | 2 | Tab to the file field; choose the demo deck; activate "Check slides" | Hear "PowerPoint file (.pptx)" on the field | | | | |
+| 2a | Alternatively, Tab to "Try the demo presentation" and activate it (no file needed) | Lands on the progress page, then the report for demo_deck.pptx | | | | |
 | 3 | Wait on the progress page | Status updates no more often than every 3 s, then "Report for demo_deck.pptx, heading level 1" | | | | |
 | 4 | Press H three times | Hear the two slide 4 findings (stretched photo, then low-resolution logo), then the slide 2 finding | | | | |
 | 5 | Press Insert+F7, Headings | Outline matches the report: h1, "Visible problems (5)", five findings (slides 4, 4, 2, 3, 5), "Minor polish (2)", two findings (slides 5, 8), "Apply fixes" | | | | |

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}How Slide Proof works – Slide Proof{% endblock %}
+{% block content %}
+<h1>How Slide Proof works</h1>
+<p>Slide Proof checks how your slides will look to a sighted audience and tells you, in words, what a sighted person would notice. It can also fix some problems for you, on a copy.</p>
+<h2>What it checks</h2>
+<ul>
+{% for c in checks %}<li>{{ c }}</li>
+{% endfor %}</ul>
+<p>{{ not_checked }}</p>
+<h2>How fixes work</h2>
+<p>Fixes are only applied to a copy of your file, never the original. After fixing, Slide Proof checks the copy again and undoes any fix that did not work or caused a new problem.</p>
+<h2>Your privacy</h2>
+<p>Your file stays on this computer. Nothing is uploaded to the internet, and files from earlier sessions are deleted each time Slide Proof starts.</p>
+<h2>What it cannot do yet</h2>
+<ul>
+<li>{{ cannot_check }}</li>
+<li>It does not look inside charts and diagrams.</li>
+<li>Its judgement of overlap uses an estimate of where text sits; a later version will use the rendered slide.</li>
+</ul>
+<p><a href="/">Check a presentation</a></p>
+{% endblock %}

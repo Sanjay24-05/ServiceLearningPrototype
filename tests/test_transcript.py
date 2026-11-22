@@ -37,6 +37,11 @@ def test_index_transcript(live_server, page):  # noqa: F811
     check("index", page)
 
 
+def test_about_transcript(live_server, page):  # noqa: F811
+    page.goto(live_server + "/about")
+    check("about", page)
+
+
 def test_report_transcript(live_server, demo_deck, page):  # noqa: F811
     reach_report(page, live_server, demo_deck[0])
     check("report", page)
