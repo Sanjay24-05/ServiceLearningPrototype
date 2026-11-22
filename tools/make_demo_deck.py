@@ -134,18 +134,21 @@ def build_demo_deck(out_dir: Path) -> tuple[Path, Path]:
     s = prs.slides.add_slide(title_only)
     _title(s, "Results")
     add_text(s, "results-list", 0.5, 1.5, 7, 4.5,
-             ["Tomatoes: 120 kg", "Beans: 80 kg", "Squash: 95 kg",
-              "Herbs: 30 kg", "Lettuce: 60 kg"], size=24)
+             ["Tomatoes: 120 kg, our best harvest yet",
+              "Beans: 80 kg, up from 55 kg last year",
+              "Squash: 95 kg across the two new beds",
+              "Herbs: 30 kg shared with the food bank",
+              "Lettuce: 60 kg picked over twelve weeks"], size=24)
     add_picture(s, "results-chart", (1000, 600), (0x4C, 0xAF, 0x50),
-                5, 3.5, 5, 3, "Bar chart of harvest results")
+                4.5, 2.6, 5, 3, "Bar chart of harvest results")
     row(3, "C2", ["results-list", "results-chart"], "visible", "F6")
 
     # 4: stretched photo and low-DPI logo
     s = prs.slides.add_slide(title_only)
     _title(s, "Our team")
-    add_picture(s, "team-photo", (800, 600), (0x79, 0x55, 0x48),
+    add_picture(s, "team-photo", (1600, 1200), (0x79, 0x55, 0x48),
                 2.5, 1.5, 8, 3.75, "Team photo",
-                image=_face_png((800, 600)))
+                image=_face_png((1600, 1200)))
     add_picture(s, "logo", (100, 100), (0x2E, 0x7D, 0x32),
                 11, 5.3, 2, 2, "Garden logo",
                 image=_logo_png((100, 100)))
