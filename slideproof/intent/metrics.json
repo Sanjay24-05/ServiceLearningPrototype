@@ -1,0 +1,92 @@
+{
+  "n_decks": 120,
+  "seed": 7,
+  "family": "hgb",
+  "threshold": 0.8,
+  "safety_target_missed": false,
+  "mistake_recall": 0.9631,
+  "deliberate_recall": 0.9548,
+  "precision": 0.958,
+  "f1": 0.9564,
+  "class_counts_before_cap": {
+    "deliberate": 842,
+    "mistake": 733,
+    "total": 1575
+  },
+  "class_counts_after_cap": {
+    "deliberate": 597,
+    "mistake": 677,
+    "total": 1274
+  },
+  "rows_dropped": {
+    "mixed": 24,
+    "content_only": 0
+  },
+  "cap_per_instance": 3,
+  "families": {
+    "logreg": {
+      "threshold": 0.88,
+      "target_missed": false,
+      "mistake_recall": 0.9513,
+      "deliberate_recall": 0.4941,
+      "precision": 0.8994,
+      "f1": 0.6378,
+      "confusion": {
+        "tp": 295,
+        "fp": 33,
+        "fn": 302,
+        "tn": 644
+      }
+    },
+    "hgb": {
+      "threshold": 0.8,
+      "target_missed": false,
+      "mistake_recall": 0.9631,
+      "deliberate_recall": 0.9548,
+      "precision": 0.958,
+      "f1": 0.9564,
+      "confusion": {
+        "tp": 570,
+        "fp": 25,
+        "fn": 27,
+        "tn": 652
+      }
+    }
+  },
+  "held_out": {
+    "demo_deck": {
+      "judged": 2,
+      "moved": 0,
+      "planted": 2,
+      "planted_moved": 0,
+      "moved_findings": []
+    },
+    "corpus": {
+      "judged": 2,
+      "moved": 0,
+      "planted": 2,
+      "planted_moved": 0,
+      "moved_findings": []
+    },
+    "yellow_idea": {
+      "judged": 5,
+      "moved": 1,
+      "planted": 0,
+      "planted_moved": 0,
+      "moved_findings": [
+        {
+          "check": "C1",
+          "slide": 8,
+          "shapes": [
+            ""
+          ],
+          "p": 0.997,
+          "planted": false
+        }
+      ],
+      "status": "ok"
+    }
+  },
+  "planted_mistakes_moved": 0,
+  "yellow_idea_moved": 1
+}
