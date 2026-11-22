@@ -148,7 +148,7 @@ def _kind_inner(shape):
         return "picture", None
     if st == MSO_SHAPE_TYPE.TEXT_BOX:
         return "textbox", None
-    if st == MSO_SHAPE_TYPE.AUTO_SHAPE:
+    if st in (MSO_SHAPE_TYPE.AUTO_SHAPE, MSO_SHAPE_TYPE.FREEFORM, MSO_SHAPE_TYPE.LINE):
         return "shape", None
     if st == MSO_SHAPE_TYPE.TABLE:
         return "table", None

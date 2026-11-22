@@ -97,3 +97,21 @@ def test_not_a_pptx(tmp_path):
     p.write_bytes(b"not a zip")
     with pytest.raises(DeckError, match="could not be opened"):
         load_deck(p)
+
+
+def test_freeform_and_connector_are_shapes_not_unchecked(tmp_path):
+    from pptx import Presentation
+    from pptx.enum.shapes import MSO_CONNECTOR
+    from pptx.util import Inches
+    from slideproof.describe.coverage import unchecked_sentence
+    prs = Presentation()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    fb = s.shapes.build_freeform(Inches(1), Inches(1))
+    fb.add_line_segments([(Inches(2), Inches(1)), (Inches(2), Inches(2))])
+    fb.convert_to_shape()
+    s.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(1), Inches(3), Inches(4), Inches(3))
+    p = tmp_path / "f.pptx"
+    prs.save(p)
+    deck = load_deck(p)
+    assert [e.kind for e in deck.slides[0].elements] == ["shape", "shape"]
+    assert unchecked_sentence(deck) is None

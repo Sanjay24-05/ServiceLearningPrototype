@@ -1,3 +1,4 @@
+import pytest
 from slideproof.checks import run_checks
 from slideproof.describe import describe
 from slideproof.describe.names import element_label
@@ -55,3 +56,23 @@ def test_long_text_gets_ellipsis(tiny_deck):
                                  "text": "one two three four five six seven"}]))
     s = deck.slides[0]
     assert element_label(s.elements[0], s) == 'text box "one two three four five six…"'
+
+
+def _pic_label(tiny_deck, name):
+    from slideproof.describe.names import element_label
+    deck = load_deck(tiny_deck([dict(kind="picture", name="n", x=1, y=1, w=2, h=2)]))
+    el = deck.slides[0].elements[0]
+    el.image.alt = None
+    el.image.filename = name
+    return element_label(el, deck.slides[0])
+
+
+@pytest.mark.parametrize("name", ["image1.png", "Image12.JPG", "Picture 3.png",
+                                  "picture.jpeg", "img_0042.jpg", "IMG 7.png"])
+def test_generic_image_filenames_are_not_names(tiny_deck, name):
+    assert _pic_label(tiny_deck, name) == "picture 1"
+
+
+@pytest.mark.parametrize("name", ["team.jpg", "chart-q3.png"])
+def test_real_image_filenames_still_shown(tiny_deck, name):
+    assert _pic_label(tiny_deck, name) == f'picture "{name}"'
