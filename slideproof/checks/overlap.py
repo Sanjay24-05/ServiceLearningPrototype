@@ -31,7 +31,8 @@ def check_overlap(deck, render=None) -> list[Finding]:
             if _is_background(lower, s, slide):
                 continue
             # A label sitting fully inside the thing it labels (caption on a photo, text on a shape).
-            if _has_text(upper) and not upper.filled and lower.bbox.contains(upper.bbox):
+            if _has_text(upper) and lower.bbox.contains(upper.bbox) and (
+                    not upper.filled or lower.kind == "picture"):
                 continue
             finding = _pair(lower, upper)
             if finding:

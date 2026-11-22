@@ -25,3 +25,24 @@ def test_sharp_picture_not_flagged(tiny_deck):
     d = load_deck(tiny_deck([{"kind": "picture", "name": "p", "x": 1, "y": 1, "w": 4, "h": 3,
                               "px": (800, 600)}]))
     assert check_resolution(d, None) == []
+
+
+def test_vector_picture_not_low_resolution(tiny_deck):
+    # Review issue 4: EMF/WMF/SVG pictures have no pixel resolution problem.
+    d = load_deck(tiny_deck([{"kind": "picture", "name": "p", "x": 1, "y": 1, "w": 6, "h": 4.5,
+                              "px": (100, 75)}]))
+    d.slides[0].elements[0].image.vector = True
+    assert check_resolution(d, None) == []
+
+
+def test_svg_picture_loaded_as_vector(tiny_deck, tmp_path):
+    from pptx import Presentation
+    from pptx.oxml.ns import qn
+    path = tiny_deck([{"kind": "picture", "name": "p", "x": 1, "y": 1, "w": 6, "h": 4.5, "px": (100, 75)}])
+    prs = Presentation(path)
+    blip = prs.slides[0].shapes[0]._element.blipFill.find(qn("a:blip"))
+    ext_lst = blip.makeelement(qn("a:extLst"), {})
+    ext = ext_lst.makeelement(qn("a:ext"), {"uri": "{96DAC541-7B7A-43D3-8B79-37D633B846F1}"})
+    ext_lst.append(ext); blip.append(ext_lst)
+    out = tmp_path / "svg.pptx"; prs.save(out)
+    assert load_deck(out).slides[0].elements[0].image.vector is True

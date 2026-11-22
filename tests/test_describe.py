@@ -97,3 +97,9 @@ def test_unknown_check_has_fallback_copy(demo_deck):
     desc = describe(f, d)
     assert desc.headline == "a layout problem was found"
     assert desc.full == "A layout problem was found on this slide. Confidence: likely."
+
+
+def test_every_check_has_grouped_copy():
+    # Review issue 6: any check can be grouped by the prioritiser (> 5 on one slide).
+    from slideproof.describe.copy import COPY, GROUPED
+    assert set(COPY) <= set(GROUPED)

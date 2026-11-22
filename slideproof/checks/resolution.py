@@ -10,7 +10,7 @@ _MINOR_DPI = 110
 
 def effective_dpi(e) -> float | None:
     img = e.image
-    if img is None or e.frame.w <= 0 or e.frame.h <= 0:
+    if img is None or img.vector or e.frame.w <= 0 or e.frame.h <= 0:
         return None
     cl, ct, cr, cb = img.crop
     return min(img.px_w * (1 - cl - cr) / (e.frame.w / EMU_PER_INCH),

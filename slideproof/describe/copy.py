@@ -126,6 +126,11 @@ GROUPED: dict[str, tuple[str, str]] = {
            "{c} pictures on this slide are stretched out of shape. Confidence: definite."),
     "C5": ("{c} pictures are low resolution",
            "{c} pictures on this slide are low resolution. Confidence: definite."),
+    "C8": ("{c} titles sit out of line with the rest",
+           "{c} titles on this slide sit out of line with the rest. Confidence: definite."),
+    "C9": ("{c} text boxes use a font used almost nowhere else",
+           "{c} text boxes on this slide use a font that the rest of the presentation hardly uses, "
+           "so they will look out of place. Confidence: definite."),
     "C10": ("{c} empty or stray objects",
             "{c} empty or stray objects are on this slide. Confidence: definite."),
 }

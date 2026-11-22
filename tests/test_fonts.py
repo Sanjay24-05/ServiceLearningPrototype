@@ -55,3 +55,9 @@ def test_stray_font_flagged(tmp_path):
     d = _deck(tmp_path, [(1, LONG, None), (2, LONG, None), (3, "Pasted from elsewhere", "Comic Sans MS")])
     fs = check_fonts(d, None)
     assert len(fs) == 1 and fs[0].measurements["font"] == "Comic Sans MS"
+
+
+def test_theme_font_reference_is_theme(tmp_path):
+    # Review issue 5: "+mn-lt" / "+mj-lt" mean "the theme's body/heading font".
+    d = _deck(tmp_path, [(1, LONG, None), (2, LONG, None), (3, "Pasted note", "+mn-lt")])
+    assert check_fonts(d, None) == []

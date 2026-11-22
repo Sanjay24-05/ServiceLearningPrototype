@@ -17,6 +17,7 @@ class ImageInfo:
     crop: tuple[float, float, float, float]  # left, top, right, bottom
     alt: str | None
     filename: str | None
+    vector: bool = False  # EMF/WMF or SVG: no pixel resolution to judge
 
 
 @dataclass

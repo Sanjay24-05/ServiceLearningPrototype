@@ -107,3 +107,24 @@ def test_picture_over_picture_still_flagged(tmp_path):
         s.shapes.add_picture(_png(), Inches(3), Inches(2), Inches(4), Inches(3))
     fs = check_overlap(_deck(tmp_path, build), None)
     assert len(fs) == 1 and fs[0].measurements["lower_is_text"] is False
+
+
+def test_filled_caption_band_inside_photo_not_flagged(tmp_path):
+    # Review issue 9: a coloured caption band with text, inside a photo, is a deliberate label.
+    from pptx.enum.shapes import MSO_SHAPE
+
+    def build(s):
+        s.shapes.add_picture(_png(), Inches(1), Inches(1), Inches(8), Inches(5))
+        band = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1), Inches(5.2), Inches(8), Inches(0.8))
+        band.fill.solid(); band.text_frame.text = "Volunteers at the spring planting day"
+    assert check_overlap(_deck(tmp_path, build), None) == []
+
+
+def test_textless_shape_hiding_photo_still_flagged(tmp_path):
+    from pptx.enum.shapes import MSO_SHAPE
+
+    def build(s):
+        s.shapes.add_picture(_png(), Inches(1), Inches(1), Inches(8), Inches(5))
+        box = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(2), Inches(2), Inches(4), Inches(3))
+        box.fill.solid()
+    assert len(check_overlap(_deck(tmp_path, build), None)) == 1

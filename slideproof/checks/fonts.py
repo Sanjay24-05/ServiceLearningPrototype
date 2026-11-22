@@ -14,7 +14,7 @@ _IGNORED_PREFIXES = ("symbol", "wingdings", "webdings", "consolas", "courier new
 
 def _family(run, theme_fonts) -> str | None:
     name = run.font
-    if name is None or name in theme_fonts:
+    if name is None or name in theme_fonts or name.startswith("+"):
         return THEME
     if name.lower().startswith(_IGNORED_PREFIXES):
         return None

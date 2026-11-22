@@ -228,4 +228,17 @@ def _image_info(shape) -> ImageInfo:
     descr = shape._element.xpath(".//p:cNvPr")[0].get("descr")
     return ImageInfo(px_w=int(img.size[0]), px_h=int(img.size[1]),
                      crop=(shape.crop_left, shape.crop_top, shape.crop_right, shape.crop_bottom),
-                     alt=descr or None, filename=img.filename)
+                     alt=descr or None, filename=img.filename, vector=_is_vector(shape, img))
+
+
+_VECTOR_TYPES = ("image/x-emf", "image/x-wmf", "image/svg+xml")
+_SVG_EXT = "{96DAC541-7B7A-43D3-8B79-37D633B846F1}"
+
+
+def _is_vector(shape, img) -> bool:
+    try:
+        if img.content_type in _VECTOR_TYPES:
+            return True
+    except Exception:
+        pass
+    return bool(shape._element.xpath(f'.//a:blip/a:extLst/a:ext[@uri="{_SVG_EXT}"]'))
