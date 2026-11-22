@@ -1,7 +1,7 @@
 import importlib.util
 from pathlib import Path
 
-from slideproof.intent.features import raw_candidates
+from slideproof.intent.features import FEATURES, features_for, raw_candidates
 from slideproof.loader import load_deck
 
 _SPEC = importlib.util.spec_from_file_location(
@@ -39,3 +39,52 @@ def test_both_classes_present(tmp_path):
     flat = [names for deck in sig for _, _, names in deck]
     assert sum(any(n.startswith("deliberate-") for n in ns) for ns in flat) >= 10
     assert sum(any(n.startswith("mistake-") for n in ns) for ns in flat) >= 10
+
+
+def _labelled_rows(paths):
+    """Feature vectors of raw candidates, labelled by name prefix (mixed or unlabelled are dropped)."""
+    rows = {"deliberate": [], "mistake": []}
+    for p in paths:
+        deck = load_deck(p)
+        names = {e.id: e.name for s in deck.slides for e in s.elements}
+        for c in raw_candidates(deck):
+            ns = [names[i] for i in c.element_ids]
+            d = any(n.startswith("deliberate-") for n in ns)
+            m = any(n.startswith("mistake-") for n in ns)
+            if d != m:
+                rows["deliberate" if d else "mistake"].append(
+                    features_for(c.check_id, c.element_ids, c.magnitude, deck))
+    return rows
+
+
+def test_all_pattern_kinds_appear(tmp_path):
+    import re
+    paths = build_training_decks(tmp_path, 30, 7)
+    names = {e.name for p in paths for s in load_deck(p).slides for e in s.elements}
+    assert len(_MOD.PATTERN_KINDS) == 15
+    for kind in _MOD.PATTERN_KINDS:
+        assert any(re.match(rf"^(deliberate|mistake)-{kind}-\d+", n) for n in names), kind
+
+
+def test_no_single_feature_separates_the_classes(tmp_path):
+    """For each feature, both classes need >= 10% of their rows on each side of a split.
+
+    Binary features split on their value. Others split on the pooled median (values above it vs
+    the rest; values at or above it when nothing lies above). A class that sits wholly on one side
+    would let a model read the label from that feature alone.
+    """
+    rows = _labelled_rows(build_training_decks(tmp_path, 30, 7))
+    assert len(rows["deliberate"]) > 100 and len(rows["mistake"]) > 100
+    for name in ["edges_touched", "span_w", "area_share", "has_text", "upper_inside_lower",
+                 "lower_is_text", "repeats"]:
+        j = FEATURES.index(name)
+        cols = {k: [r[j] for r in v] for k, v in rows.items()}
+        pooled = cols["deliberate"] + cols["mistake"]
+        if set(pooled) <= {0.0, 1.0}:
+            sides = lambda v: v == 1.0
+        else:
+            med = sorted(pooled)[len(pooled) // 2]
+            sides = (lambda v: v > med) if any(v > med for v in pooled) else (lambda v: v >= med)
+        for k, col in cols.items():
+            share = sum(map(sides, col)) / len(col)
+            assert 0.10 <= share <= 0.90, (name, k, round(share, 2))
