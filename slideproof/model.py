@@ -46,6 +46,10 @@ class Element:
     placeholder_type: str | None = None
     group_id: str | None = None
     fixable: bool = True  # False when no fix may be offered (e.g. duplicate shape id)
+    outlined: bool = False  # has a visible outline
+    paragraphs: list[tuple[int, float | None]] = field(default_factory=list)  # (chars, size_pt)
+    anchor: str = "top"  # vertical text anchor: "top" | "middle" | "bottom"
+    insets: tuple[int, int, int, int] = (91440, 45720, 91440, 45720)  # l, t, r, b in EMU
 
 
 @dataclass

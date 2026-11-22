@@ -115,3 +115,82 @@ def test_freeform_and_connector_are_shapes_not_unchecked(tmp_path):
     deck = load_deck(p)
     assert [e.kind for e in deck.slides[0].elements] == ["shape", "shape"]
     assert unchecked_sentence(deck) is None
+
+
+# ---- M2 Task 1: text layout fields, outline, group transforms ----
+from pptx.enum.shapes import MSO_SHAPE  # noqa: E402
+from pptx.enum.text import MSO_ANCHOR  # noqa: E402
+from pptx.util import Inches, Pt  # noqa: E402
+from slideproof.units import Rect  # noqa: E402
+
+
+def _new_blank(tmp_path):
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = inches(13.333), inches(7.5)
+    slide = prs.slides.add_slide(next(l for l in prs.slide_layouts if l.name == "Blank"))
+    return prs, slide
+
+
+def _set_group_xfrm(grp, off, ext, ch_off, ch_ext):
+    x = grp._element.grpSpPr.get_or_add_xfrm()
+    for tag, (a, b), names in (("off", off, ("x", "y")), ("ext", ext, ("cx", "cy")),
+                               ("chOff", ch_off, ("x", "y")), ("chExt", ch_ext, ("cx", "cy"))):
+        el = x.find(f"{{http://schemas.openxmlformats.org/drawingml/2006/main}}{tag}")
+        el.set(names[0], str(a)); el.set(names[1], str(b))
+
+
+def test_text_fields_loaded(tiny_deck):
+    d = load_deck(tiny_deck([{"kind": "textbox", "name": "t", "x": 1, "y": 1, "w": 4, "h": 2,
+                              "text": "Hello world"}]))
+    e = d.slides[0].elements[0]
+    assert e.paragraphs and e.paragraphs[0][0] == len("Hello world")
+    assert e.anchor == "top" and e.insets == (91440, 45720, 91440, 45720)
+    assert e.outlined is False
+
+
+def test_paragraph_sizes_and_middle_anchor(tmp_path):
+    prs, slide = _new_blank(tmp_path)
+    tf = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(2)).text_frame
+    tf.text = "First"
+    tf.paragraphs[0].runs[0].font.size = Pt(30)
+    tf.add_paragraph().text = "Second line"
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    p = tmp_path / "t.pptx"; prs.save(p)
+    e = load_deck(p).slides[0].elements[0]
+    assert e.paragraphs == [(5, 30.0), (11, None)]
+    assert e.anchor == "middle"
+
+
+def test_outlined_shape(tmp_path):
+    prs, slide = _new_blank(tmp_path)
+    sh = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1), Inches(1), Inches(2), Inches(1))
+    sh.fill.background()
+    sh.line.color.rgb = __import__("pptx.dml.color", fromlist=["RGBColor"]).RGBColor(0, 0, 0)
+    sh.line.width = Pt(2)
+    p = tmp_path / "o.pptx"; prs.save(p)
+    assert load_deck(p).slides[0].elements[0].outlined is True
+
+
+def test_group_with_child_offset_and_scale(tmp_path):
+    prs, slide = _new_blank(tmp_path)
+    grp = slide.shapes.add_group_shape()
+    grp.shapes.add_textbox(Inches(1), Inches(1), Inches(1), Inches(0.5)).text_frame.text = "c"
+    _set_group_xfrm(grp, (inches(2), inches(1)), (inches(4), inches(2)),
+                    (inches(1), inches(1)), (inches(2), inches(1)))
+    p = tmp_path / "g.pptx"; prs.save(p)
+    e = load_deck(p).slides[0].elements[0]
+    assert e.frame == Rect(inches(2), inches(1), inches(2), inches(1))
+
+
+def test_nested_group_composes(tmp_path):
+    prs, slide = _new_blank(tmp_path)
+    outer = slide.shapes.add_group_shape()
+    inner = outer.shapes.add_group_shape()
+    inner.shapes.add_textbox(Inches(0), Inches(0), Inches(1), Inches(1)).text_frame.text = "n"
+    # inner: identity scale, moves child by +1in x; outer: scale x2, moves by +2in, +1in
+    _set_group_xfrm(inner, (inches(1), 0), (inches(1), inches(1)), (0, 0), (inches(1), inches(1)))
+    _set_group_xfrm(outer, (inches(2), inches(1)), (inches(4), inches(2)), (0, 0), (inches(2), inches(1)))
+    p = tmp_path / "n.pptx"; prs.save(p)
+    e = load_deck(p).slides[0].elements[0]
+    # child (0,0,1,1) -> inner (1,0,1,1) -> outer x: 2 + 1*2 = 4, y: 1 + 0 = 1, size 2x2
+    assert e.frame == Rect(inches(4), inches(1), inches(2), inches(2))
