@@ -144,7 +144,7 @@ FALLBACK = ("a layout problem was found",
 
 
 INTENT_REASONS = {
-    "repeats": "the same object appears in the same place on {n} other slides",
+    "repeats": "the same object appears in the same place on {n} other {slides}",
     "edges": "it runs along the edge of the slide like a design element",
     "span": "it spans the full width or height of the slide",
     "no_text": "it contains no text",
@@ -158,7 +158,7 @@ def intent_sentence(measurements: dict) -> str:
     """'Probably intentional (93% sure): reason and reason.' for a judged finding."""
     pct = round(measurements["intent_p"] * 100)
     n = measurements.get("intent_repeats", 0)
-    reasons = [INTENT_REASONS[c].format(n=n) for c in measurements.get("intent_reasons", [])
+    reasons = [INTENT_REASONS[c].format(n=n, slides="slide" if n == 1 else "slides") for c in measurements.get("intent_reasons", [])
                if c in INTENT_REASONS]
     if not reasons:
         return f"Probably intentional ({pct}% sure)."

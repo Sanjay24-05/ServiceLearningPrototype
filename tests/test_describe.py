@@ -114,3 +114,9 @@ def test_intent_sentence_copy():
     assert intent_sentence({"intent_p": 0.9, "intent_reasons": ["no_text"]}) == (
         "Probably intentional (90% sure): it contains no text.")
     assert INTENT_GROUPED == "Probably intentional: the model judged these objects as deliberate design."
+
+
+def test_intent_sentence_singular_slide():
+    from slideproof.describe.copy import intent_sentence
+    assert intent_sentence({"intent_p": 0.9, "intent_reasons": ["repeats"], "intent_repeats": 1}) == (
+        "Probably intentional (90% sure): the same object appears in the same place on 1 other slide.")

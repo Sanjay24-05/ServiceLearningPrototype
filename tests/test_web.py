@@ -344,6 +344,7 @@ def test_about_shows_model_accuracy(client):
     assert f"kept {round(m['mistake_recall'] * 100)}% of real mistakes" in html
     assert f"recognised {round(m['deliberate_recall'] * 100)}% of deliberate designs" in html
     assert "All training data is synthetic" in html
+    assert "Nothing is hidden: it is still listed and counted" in html
     assert html.index("What it checks") < html.index("How accurate")
     assert html.index("How accurate") < html.index("How fixes work")
 
@@ -355,6 +356,7 @@ def test_about_and_report_without_model(client, tmp_path, monkeypatch):
     try:
         html = client.get("/about").text
         assert "How accurate the model is" not in html
+        assert "Probably intentional" not in html
         assert "A small on-device model" not in html
         assert "How fixes work" in html
     finally:
