@@ -11,8 +11,8 @@ def test_analyse_demo_without_libreoffice(monkeypatch, tmp_path, demo_deck):
     assert a.render.status == "skipped"
     assert a.skipped_note == "Note: text overflow and contrast checks were skipped because LibreOffice is not installed."
     assert msgs[:2] == ["Reading slides…", "Rendering slides…"] and msgs[-1] == "Checking slide 8 of 8…"
-    assert {f.check_id for f in a.report.visible} == {"C1", "C2", "C4", "C5"}
-    assert {f.check_id for f in a.report.minor} == {"C10"}
+    assert {f.check_id for f in a.report.visible} == {"C1", "C2", "C4", "C5", "C8"}
+    assert {f.check_id for f in a.report.minor} == {"C9", "C10"}
 
 
 def test_export_resolves_both_and_introduces_nothing(monkeypatch, tmp_path, demo_deck):
@@ -20,7 +20,7 @@ def test_export_resolves_both_and_introduces_nothing(monkeypatch, tmp_path, demo
     a = analyse(demo_deck[0], tmp_path / "a")
     fixes = [f.fix for f in a.findings if f.fix]
     r = export_and_verify(a, fixes, tmp_path / "demo (checked).pptx", tmp_path / "v")
-    assert r.output.exists() and r.resolved == 3 and r.new_visible == 0 and not r.rolled_back
+    assert r.output.exists() and r.resolved == 4 and r.new_visible == 0 and not r.rolled_back
 
 
 def test_bad_fix_is_rolled_back(monkeypatch, tmp_path, demo_deck):

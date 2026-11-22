@@ -68,6 +68,7 @@ class DeckModel:
     slide_w: int
     slide_h: int
     slides: list[SlideModel] = field(default_factory=list)
+    theme_fonts: set[str] = field(default_factory=set)  # major/minor latin fonts of the theme
 
     @property
     def slide_rect(self) -> Rect:

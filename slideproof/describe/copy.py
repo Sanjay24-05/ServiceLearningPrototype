@@ -86,7 +86,30 @@ def _c10(f, c: Ctx):
             f"when presenting. Confidence: definite.")
 
 
-COPY: dict[str, Callable] = {"C1": _c1, "C2": _c2, "C4": _c4, "C5": _c5, "C10": _c10}
+def _c8(f, c: Ctx):
+    dx, dy = f.measurements["dx"], f.measurements["dy"]
+    others = f.measurements["others"]
+    if abs(dy) >= abs(dx):
+        direction = "lower" if dy > 0 else "higher"
+        share = abs(dy) / c.deck.slide_h
+    else:
+        direction = "further right" if dx > 0 else "further left"
+        share = abs(dx) / c.deck.slide_w
+    amount = "slightly" if share < 0.03 else "noticeably" if share < 0.10 else "much"
+    return (f"the title sits {amount} {direction} than on the other {others} slides",
+            f"The title on this slide sits {amount} {direction} than on the other {others} slides, "
+            f"so it will seem to jump when the slides change. Confidence: definite.")
+
+
+def _c9(f, c: Ctx):
+    font, main = f.measurements["font"], f.measurements["main_font"]
+    return (f"{c.label} uses {font}, a font used almost nowhere else",
+            f"{cap(c.label)}, {c.loc}, is set in {font}. The rest of the presentation mainly uses "
+            f"{main}, so this text will look out of place. Confidence: definite.")
+
+
+COPY: dict[str, Callable] = {"C1": _c1, "C2": _c2, "C4": _c4, "C5": _c5, "C8": _c8, "C9": _c9,
+                             "C10": _c10}
 
 # (headline, full) for findings grouped by the prioritiser; {c} = count, {conf} = confidence.
 GROUPED: dict[str, tuple[str, str]] = {

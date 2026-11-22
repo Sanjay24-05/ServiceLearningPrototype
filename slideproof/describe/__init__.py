@@ -32,6 +32,8 @@ def _fix_label(f: Finding) -> str | None:
         return "Move it back onto the slide. Safe fix."
     if f.fix.kind == "F2":
         return "Restore its natural shape, keeping it centred. Safe fix."
+    if f.fix.kind == "F3":
+        return "Move the title to the same position as on the other slides. Safe fix."
     if f.fix.kind == "F4":
         return "Remove the empty text box. Safe fix."
     return None
@@ -52,6 +54,8 @@ def _change_log(f: Finding, label: str, el) -> str | None:
             change = "taller" if new.h > el.frame.h else "shorter"
         return (f"Slide {n}: {label} restored to its natural shape; "
                 f"it is now {change} and still centred.")
+    if f.fix.kind == "F3":
+        return f"Slide {n}: the title moved to the same position as on the other slides."
     if f.fix.kind == "F4":
         return f"Slide {n}: an empty text box was removed."
     return None

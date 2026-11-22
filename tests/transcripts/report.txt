@@ -1,8 +1,8 @@
 focus: heading Report for demo_deck.pptx
 heading level 1: Report for demo_deck.pptx
-text: 8 slides checked. 4 visible problems on 3 slides, 1 minor. This version checks two things: objects that stick out past the slide edge, and stretched pictures. Overlap, text overflow, contrast, fonts and title position are not checked yet.
+text: 8 slides checked. 5 visible problems on 4 slides, 2 minor. This version checks two things: objects that stick out past the slide edge, and stretched pictures. Overlap, text overflow, contrast, fonts and title position are not checked yet.
 text: Note: text overflow and contrast checks were skipped because LibreOffice is not installed.
-heading level 2: Visible problems (4)
+heading level 2: Visible problems (5)
 heading level 3: Slide 4, "Our team": picture "Team photo" is stretched wider than its natural shape
 text: Picture "Team photo", in the centre, is shown 1.6 times as wide as its natural shape, so it looks distorted. Confidence: definite.
 text: Fix for this problem
@@ -17,7 +17,14 @@ checkbox checked: Move it back onto the slide. Safe fix.
 heading level 3: Slide 3, "Results": picture "Bar chart of harvest results" covers about a quarter of text box "Tomatoes: 120 kg, our best harvest…"
 text: Picture "Bar chart of harvest results", in the centre, sits on top of about a quarter of text box "Tomatoes: 120 kg, our best harvest…", in the middle left. Your audience may not be able to read the covered text. Confidence: likely.
 text: No automatic fix for this one.
-heading level 2: Minor polish (1)
+heading level 3: Slide 5, "Budget": the title sits noticeably lower than on the other 6 slides
+text: The title on this slide sits noticeably lower than on the other 6 slides, so it will seem to jump when the slides change. Confidence: definite.
+text: Fix for this problem
+checkbox checked: Move the title to the same position as on the other slides. Safe fix.
+heading level 2: Minor polish (2)
+heading level 3: Slide 5, "Budget": text box "Funded by local grants" uses Georgia, a font used almost nowhere else
+text: Text box "Funded by local grants", in the bottom centre, is set in Georgia. The rest of the presentation mainly uses the theme font, so this text will look out of place. Confidence: definite.
+text: No automatic fix for this one.
 heading level 3: Slide 8, "Thank you": empty text box was left on the slide
 text: Empty text box, in the bottom right, is invisible when presenting but gets in the way when you edit the slide. Confidence: definite.
 text: Fix for this problem

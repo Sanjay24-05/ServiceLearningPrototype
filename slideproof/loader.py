@@ -32,10 +32,25 @@ def load_deck(path: Path) -> DeckModel:
     if len(slides) > MAX_SLIDES:
         raise DeckError(
             f"This presentation has more than {MAX_SLIDES} slides; the limit is {MAX_SLIDES}.")
-    deck = DeckModel(path=path, slide_w=int(prs.slide_width), slide_h=int(prs.slide_height))
+    deck = DeckModel(path=path, slide_w=int(prs.slide_width), slide_h=int(prs.slide_height),
+                     theme_fonts=_theme_fonts(prs))
     for i, slide in enumerate(slides, start=1):
         deck.slides.append(_load_slide(slide, i))
     return deck
+
+
+def _theme_fonts(prs) -> set[str]:
+    """Latin typefaces of the first master's theme (heading and body fonts)."""
+    from lxml import etree
+    from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+    try:
+        theme = prs.slide_masters[0].part.part_related_by(RT.THEME)
+        root = etree.fromstring(theme.blob)
+    except Exception:
+        return set()
+    ns = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+    return {el.get("typeface") for el in root.iterfind(".//a:fontScheme/*/a:latin", ns)
+            if el.get("typeface")}
 
 
 def _load_slide(slide, index: int) -> SlideModel:

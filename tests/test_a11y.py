@@ -92,9 +92,9 @@ def test_report_heading_outline(live_server, demo_deck, page):
         ".map(h => [h.tagName.toLowerCase(), h.textContent.trim()])")
     name = demo_deck[0].name
     assert heads[0] == ["h1", f"Report for {name}"]
-    assert heads[1] == ["h2", "Visible problems (4)"]
+    assert heads[1] == ["h2", "Visible problems (5)"]
     # Ranking is deterministic (spec 7.3): the stretched team photo on
     # slide 4 outranks the agenda box on slide 2.
-    assert [h[0] for h in heads[2:6]] == ["h3", "h3", "h3", "h3"]
-    assert [h[1].split(",")[0] for h in heads[2:6]] == ["Slide 4", "Slide 4", "Slide 2", "Slide 3"]
+    assert [h[0] for h in heads[2:7]] == ["h3"] * 5
+    assert [h[1].split(",")[0] for h in heads[2:7]] == ["Slide 4", "Slide 4", "Slide 2", "Slide 3", "Slide 5"]
     assert heads[-1] == ["h2", "Apply fixes"]
