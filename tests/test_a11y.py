@@ -113,3 +113,47 @@ def test_focus_outline_visible(live_server, page):
     page.keyboard.press("Tab")
     outline = page.evaluate("getComputedStyle(document.activeElement).outlineStyle")
     assert outline not in ("none", "")
+
+
+LONG_NAME = ("Quarterly_Business_Review_FINAL_v3_approved_by_the_curriculum_"
+             "committee_2026.pptx")
+
+
+def no_horizontal_scroll(page):
+    return page.evaluate("document.documentElement.scrollWidth <= "
+                         "document.documentElement.clientWidth")
+
+
+def test_long_filename_reflows_at_320px(live_server, demo_deck, page, tmp_path):
+    import shutil
+    long_deck = tmp_path / LONG_NAME
+    shutil.copy(demo_deck[0], long_deck)
+    page.set_viewport_size({"width": 320, "height": 800})
+    reach_report(page, live_server, long_deck)
+    assert no_horizontal_scroll(page), "report page scrolls horizontally"
+    page.get_by_role("button", name="Create corrected copy").click()
+    page.wait_for_url("**/result", timeout=NAV_TIMEOUT)
+    assert no_horizontal_scroll(page), "result page scrolls horizontally"
+
+
+def test_h1_has_no_focus_ring_but_controls_do(live_server, demo_deck, page):
+    reach_report(page, live_server, demo_deck[0])
+    assert page.evaluate("document.activeElement.tagName") == "H1"
+    assert page.evaluate("getComputedStyle(document.activeElement).outlineStyle") == "none"
+    page.keyboard.press("Tab")
+    assert page.evaluate("document.activeElement.tagName") != "H1"
+    assert page.evaluate("getComputedStyle(document.activeElement).outlineWidth") == "3px"
+    assert page.evaluate("getComputedStyle(document.activeElement).outlineStyle") == "solid"
+
+
+def test_root_font_size_respects_user_preference(live_server, page):
+    page.goto(live_server + "/")
+    assert page.evaluate("getComputedStyle(document.documentElement).fontSize") == "18px"
+    assert "112.5%" in (open("slideproof/web/static/style.css").read())
+
+
+def test_file_button_matches_buttons(live_server, page):
+    page.goto(live_server + "/")
+    h = page.evaluate("getComputedStyle(document.querySelector('#file'), "
+                      "'::file-selector-button').minHeight")
+    assert h == "44px"
