@@ -9,12 +9,11 @@ from fastapi.testclient import TestClient
 from pptx import Presentation
 
 ROOT = Path(__file__).resolve().parent.parent
-for p in (ROOT, ROOT / "tools"):
-    if str(p) not in sys.path:
-        sys.path.insert(0, str(p))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from slideproof.units import inches  # noqa: E402
-from make_demo_deck import build_demo_deck  # noqa: E402
+from slideproof.demo_deck import build_demo_deck  # noqa: E402
 from slideproof.web.app import create_app  # noqa: E402
 
 

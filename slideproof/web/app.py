@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from slideproof.analysis import analyse
+from slideproof.demo_deck import build_demo_deck
 from slideproof.describe import describe
 from slideproof.describe.layout_map import slide_map
 from slideproof.describe.coverage import (checked_sentence, plural,
@@ -57,6 +58,14 @@ def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
                         "layout": slide_map(deck.slides[f.slide_index - 1], deck)})
         return out
 
+    def _start_analysis(run: Run, path: Path):
+        def job(progress):
+            run.analysis = analyse(path, run.dir, progress)
+            return f"/runs/{run.id}/report"
+
+        store.start(run, job)
+        return RedirectResponse(f"/runs/{run.id}/progress", status_code=303)
+
     @app.get("/")
     def index(request: Request):
         return page(request, "index.html", problems=startup_check())
@@ -85,12 +94,17 @@ def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
             return error(request, "This file name can't be used. Rename the "
                                   "file and try again.")
 
-        def job(progress):
-            run.analysis = analyse(path, run.dir, progress)
-            return f"/runs/{run.id}/report"
+        return _start_analysis(run, path)
 
-        store.start(run, job)
-        return RedirectResponse(f"/runs/{run.id}/progress", status_code=303)
+    @app.post("/demo")
+    def demo(request: Request):
+        run = store.create("demo_deck.pptx")
+        folder = run.dir / "original"
+        try:
+            path, _ = build_demo_deck(folder)
+        except Exception:
+            return error(request, "The demo presentation could not be created.")
+        return _start_analysis(run, path)
 
     @app.get("/runs/{run_id}/progress")
     def progress_page(request: Request, run_id: str):

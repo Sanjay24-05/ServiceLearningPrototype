@@ -39,3 +39,12 @@ def test_results_chart_overlaps_long_list(demo_deck):
     chart = next(sh for sh in s.shapes if sh.name == "results-chart")
     assert all(35 <= len(p.text) <= 45 for p in lst.text_frame.paragraphs)
     assert (chart.left, chart.top) == (int(4.5 * 914400), int(2.6 * 914400))
+
+
+def test_cli_wrapper_still_builds(tmp_path):
+    import subprocess
+    import sys
+    subprocess.run([sys.executable, "tools/make_demo_deck.py", str(tmp_path)],
+                   check=True)
+    assert (tmp_path / "demo_deck.pptx").exists()
+    assert (tmp_path / "expected_findings.json").exists()
