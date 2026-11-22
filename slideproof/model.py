@@ -51,6 +51,7 @@ class Element:
     paragraphs: list[tuple[int, float | None]] = field(default_factory=list)  # (chars, size_pt)
     anchor: str = "top"  # vertical text anchor: "top" | "middle" | "bottom"
     align: str = "left"  # horizontal alignment of the text: "left" | "center" | "right"
+    animated: bool = False  # the slide's animation list targets this shape
     insets: tuple[int, int, int, int] = (91440, 45720, 91440, 45720)  # l, t, r, b in EMU
 
 

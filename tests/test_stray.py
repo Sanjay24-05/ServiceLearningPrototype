@@ -77,7 +77,10 @@ def test_empty_title_placeholder_label(tmp_path):
     p = tmp_path / "t.pptx"; prs.save(p)
     d = load_deck(p)
     f = check_stray(d, None)[0]
-    assert describe(f, d).headline == "empty title was left on the slide"
+    # Review issue 7: never offer to delete a title; screen readers navigate by slide titles.
+    assert f.fix is None and f.measurements["kind"] == "no_title"
+    assert describe(f, d).headline == "this slide has no title"
+    assert "Screen readers" in describe(f, d).full
 
 
 def test_empty_placeholder_with_fill_is_still_minor(tmp_path):
@@ -88,3 +91,42 @@ def test_empty_placeholder_with_fill_is_still_minor(tmp_path):
         body.fill.solid()
     d = _deck(tmp_path, build, layout=1)
     assert [(f.severity, f.fix.kind) for f in check_stray(d, None)] == [("minor", "F4")]
+
+
+def test_empty_picture_placeholder_labelled_by_type(tmp_path):
+    # Review issue 7: an empty picture placeholder is not a "text box".
+    prs = Presentation()
+    s = prs.slides.add_slide(next(l for l in prs.slide_layouts if l.name == "Picture with Caption"))
+    s.shapes.title.text = "Our garden"
+    s.placeholders[2].text = "A caption"
+    p = tmp_path / "pic.pptx"; prs.save(p)
+    d = load_deck(p)
+    fs = check_stray(d, None)
+    assert len(fs) == 1
+    desc = describe(fs[0], d)
+    assert desc.headline == "empty picture placeholder was left on the slide"
+    assert desc.fix_label == "Remove the empty picture placeholder. Safe fix."
+    assert desc.change_log == "Slide 1: an empty picture placeholder was removed."
+
+
+def test_animated_empty_box_gets_no_fix(tmp_path):
+    # Review issue 8: deleting an animated shape would leave a dangling animation target.
+    from lxml import etree
+
+    def build(s):
+        s.shapes.add_textbox(Inches(1), Inches(1), Inches(3), Inches(1))
+    prs = Presentation()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    tb = s.shapes.add_textbox(Inches(1), Inches(1), Inches(3), Inches(1))
+    ns = "http://schemas.openxmlformats.org/presentationml/2006/main"
+    timing = etree.fromstring(
+        f'<p:timing xmlns:p="{ns}"><p:tnLst><p:par><p:cTn id="1"><p:childTnLst><p:par><p:cTn id="2">'
+        f'<p:childTnLst><p:set><p:cBhvr><p:cTn id="3"/><p:tgtEl><p:spTgt spid="{tb.shape_id}"/>'
+        f'</p:tgtEl></p:cBhvr></p:set></p:childTnLst></p:cTn></p:par></p:childTnLst></p:cTn></p:par>'
+        f'</p:tnLst></p:timing>')
+    s._element.append(timing)
+    p = tmp_path / "anim.pptx"; prs.save(p)
+    d = load_deck(p)
+    assert d.slides[0].elements[0].animated is True
+    fs = check_stray(d, None)
+    assert [(f.measurements["kind"], f.fix) for f in fs] == [("empty", None)]

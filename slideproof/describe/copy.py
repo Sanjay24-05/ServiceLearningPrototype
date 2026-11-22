@@ -77,6 +77,10 @@ def _c10(f, c: Ctx):
             full = (f"{cap(c.label)}, {c.loc}, is invisible when presenting but gets in the way "
                     f"when you edit the slide. Confidence: definite.")
         return f"{c.label} was left on the slide", full
+    if kind == "no_title":
+        return ("this slide has no title",
+                "The title on this slide is empty. Screen readers and the slide list use titles "
+                "to find slides, so add a short title. Confidence: definite.")
     if kind == "offslide_title":
         return ("the title is placed off the slide",
                 "The title is placed outside the slide, so it is not shown when presenting, but "

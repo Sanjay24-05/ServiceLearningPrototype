@@ -60,11 +60,21 @@ def _layout_key(slide) -> str:
         return ""
 
 
+def _animated_ids(slide) -> set[int]:
+    try:
+        return {int(v) for v in slide._element.xpath(".//p:timing//p:spTgt/@spid")}
+    except Exception:
+        return set()
+
+
 def _load_slide(slide, index: int) -> SlideModel:
     sm = SlideModel(index=index, slide_id=slide.slide_id,
                     hidden=slide._element.get("show") in ("0", "false"), title_text=None,
                     layout_key=_layout_key(slide))
     _walk(slide.shapes, [], None, sm, [0])
+    animated = _animated_ids(slide)
+    for e in sm.elements:
+        e.animated = e.shape_id in animated
     return sm
 
 

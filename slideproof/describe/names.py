@@ -7,6 +7,17 @@ _GENERIC_IMAGE_NAME = re.compile(
     r"^(image\d*\.\w+|picture\s*\d*(\.\w+)?|img[_ ]?\d+\.\w+)$", re.IGNORECASE)
 
 
+_EMPTY_PLACEHOLDER = {
+    "PICTURE": "empty picture placeholder",
+    "CHART": "empty chart placeholder",
+    "TABLE": "empty table placeholder",
+    "MEDIA_CLIP": "empty media placeholder",
+    "OBJECT": "empty content placeholder",
+    "ORG_CHART": "empty diagram placeholder",
+    "BITMAP": "empty picture placeholder",
+}
+
+
 def first_words(text: str, n: int = 6) -> str:
     words = text.split()
     out = " ".join(words[:n])
@@ -23,7 +34,7 @@ def element_label(el, slide) -> str:
         return "the title" if _has_text(el) else "empty title"
     if kind in ("body", "textbox"):
         if not _has_text(el):
-            return "empty text box"
+            return _EMPTY_PLACEHOLDER.get(el.placeholder_type or "", "empty text box")
         return f'text box "{first_words(el.text or "")}"'
     if kind == "picture":
         alt = (el.image.alt or "").strip() if el.image else ""

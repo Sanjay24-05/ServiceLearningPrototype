@@ -23,7 +23,7 @@ def _slide_of(deck, n: int):
     return next(s for s in deck.slides if s.index == n)
 
 
-def _fix_label(f: Finding) -> str | None:
+def _fix_label(f: Finding, label: str | None) -> str | None:
     if f.fix is None:
         return None
     if f.fix.kind == "F1":
@@ -35,7 +35,7 @@ def _fix_label(f: Finding) -> str | None:
     if f.fix.kind == "F3":
         return "Move the title to the same position as on the other slides. Safe fix."
     if f.fix.kind == "F4":
-        return "Remove the empty text box. Safe fix."
+        return f"Remove the {label}. Safe fix."
     return None
 
 
@@ -57,7 +57,7 @@ def _change_log(f: Finding, label: str, el) -> str | None:
     if f.fix.kind == "F3":
         return f"Slide {n}: the title moved to the same position as on the other slides."
     if f.fix.kind == "F4":
-        return f"Slide {n}: an empty text box was removed."
+        return f"Slide {n}: an {label} was removed."
     return None
 
 
@@ -87,6 +87,6 @@ def describe(finding: Finding, deck) -> Description:
         headline=headline,
         short=f"{prefix}: {headline}",
         full=full,
-        fix_label=_fix_label(f),
+        fix_label=_fix_label(f, label),
         change_log=None if grouped else _change_log(f, label, el),
     )
