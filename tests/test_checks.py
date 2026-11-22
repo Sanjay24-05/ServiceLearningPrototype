@@ -63,3 +63,21 @@ def test_restore_proportions_result_inside_original_frame(frame, aspect):
     r = restore_proportions(frame, aspect)
     assert frame.contains(r) and r.w * r.h <= frame.w * frame.h
     assert abs(r.w / r.h - aspect) < 0.01
+
+
+def _pic(name, x, y, w, h):
+    return dict(kind="picture", name=name, x=x, y=y, w=w, h=h, px=(400, 300))
+
+
+def test_c1_picture_37_percent_off_corner_is_visible_with_f1(tiny_deck):
+    # 4x3 in picture: 3.6 of 4 in and 2.1 of 3 in stay on the slide => 63% visible
+    deck = load_deck(tiny_deck([_pic("diagram", 6.4, 5.4, 4, 3)],
+                               slide_w=inches(10), slide_h=inches(7.5)))
+    f = next(f for f in run_checks(deck, None) if f.check_id == "C1")
+    assert abs(f.measurements["outside"] - 0.37) < 0.02
+    assert f.severity == "visible" and f.fix and f.fix.kind == "F1"
+
+
+def test_c1_full_width_banner_bleeding_off_top_not_flagged(tiny_deck):
+    deck = load_deck(tiny_deck([_pic("banner", 0, -0.5, 13.333, 1.5)]))
+    assert not [f for f in run_checks(deck, None) if f.check_id == "C1"]
