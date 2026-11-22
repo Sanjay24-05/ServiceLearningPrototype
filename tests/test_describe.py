@@ -120,3 +120,16 @@ def test_intent_sentence_singular_slide():
     from slideproof.describe.copy import intent_sentence
     assert intent_sentence({"intent_p": 0.9, "intent_reasons": ["repeats"], "intent_repeats": 1}) == (
         "Probably intentional (90% sure): the same object appears in the same place on 1 other slide.")
+
+
+def test_intent_sentence_never_says_100_percent():
+    from slideproof.describe.copy import intent_sentence
+    assert intent_sentence({"intent_p": 0.999, "intent_reasons": ["no_text"]}).startswith(
+        "Probably intentional (99% sure)")
+    assert intent_sentence({"intent_p": 1.0, "intent_reasons": []}).startswith("Probably intentional (99% sure)")
+
+
+def test_intent_sentence_without_reasons_uses_fallback():
+    from slideproof.describe.copy import intent_sentence
+    assert intent_sentence({"intent_p": 0.9, "intent_reasons": []}) == (
+        "Probably intentional (90% sure): it looks like the deliberate designs the model learned from.")

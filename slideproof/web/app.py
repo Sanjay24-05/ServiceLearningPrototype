@@ -27,6 +27,7 @@ EXPIRED = "This check has expired. Check the file again."
 
 def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
     app = FastAPI()
+    intent.available()  # load the model now, so the first check is not slower
     app.add_middleware(TrustedHostMiddleware,
                        allowed_hosts=["127.0.0.1", "localhost", *extra_hosts])
     store = RunStore(Path(runs_root))

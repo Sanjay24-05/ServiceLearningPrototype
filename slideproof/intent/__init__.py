@@ -7,7 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from slideproof.findings import Finding
-from slideproof.intent.features import FEATURES, features_for
+from slideproof.intent.features import _TEXT_KINDS, FEATURES, _has_text, features_for
 
 MODEL_DIR = Path(__file__).resolve().parent
 UNAVAILABLE_NOTE = 'The "probably intentional" judgement is unavailable in this setup.'
@@ -69,15 +69,21 @@ def _reasons(vec: list[float]) -> list[str]:
         ("edges", v["edges_touched"] >= 2),
         ("span", v["span_w"] >= 0.9 or v["span_h"] >= 0.9),
         ("no_text", v["has_text"] == 0),
-        ("behind", v["z_rank"] <= 0.2),
+        # the upper element of a C2 overlap is above by definition; one element is behind nothing
+        ("behind", v["z_rank"] <= 0.2 and v["elements_on_slide"] > 1 and v["is_c2"] == 0),
         ("layout", v["is_placeholder"] == 1),
     ]
     return [code for code, hit in rules if hit][:2]
 
 
-def _judgeable(f: Finding, deck) -> bool:
+def _judgeable(f, deck) -> bool:
+    """Whether the model may judge this finding (or raw candidate: anything with check_id and
+    element_ids). Text that sticks out is never judged: a text box or title pushed off the slide
+    is almost always a mistake, even when it is copied onto several slides. The trainer's
+    held-out check uses this same function."""
     if f.check_id == "C1":
-        return True
+        e = deck.element(f.element_ids[0])
+        return not (e.kind in _TEXT_KINDS or _has_text(e))
     if f.check_id == "C2":
         up = deck.element(f.element_ids[0])
         return up.kind == "picture" or bool(up.filled)
@@ -89,12 +95,18 @@ def judge(findings: list[Finding], deck) -> tuple[list[Finding], str | None]:
     if bundle is None:
         return list(findings), UNAVAILABLE_NOTE
     model, _ = bundle
-    todo = [f for f in findings if _judgeable(f, deck)]
+    try:
+        todo = [f for f in findings if _judgeable(f, deck)]
+    except Exception:
+        return list(findings), UNAVAILABLE_NOTE
     if not todo:
         return list(findings), None
-    vecs = {id(f): features_for(f.check_id, f.element_ids, f.magnitude, deck) for f in todo}
-    probs = model.predict_proba([vecs[id(f)] for f in todo])[:, 1]
-    judged = {id(f): (float(p), vecs[id(f)]) for f, p in zip(todo, probs)}
+    try:
+        vecs = {id(f): features_for(f.check_id, f.element_ids, f.magnitude, deck) for f in todo}
+        probs = model.predict_proba([vecs[id(f)] for f in todo])[:, 1]
+        judged = {id(f): (float(p), vecs[id(f)]) for f, p in zip(todo, probs)}
+    except Exception:  # a broken model must never break the report
+        return list(findings), UNAVAILABLE_NOTE
     out = []
     for f in findings:
         if id(f) in judged:
