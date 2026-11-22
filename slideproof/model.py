@@ -59,6 +59,7 @@ class SlideModel:
     hidden: bool
     title_text: str | None
     elements: list[Element] = field(default_factory=list)
+    layout_key: str = ""  # identifies the slide layout (titles are only compared within one layout)
     skipped_shapes: list[str] = field(default_factory=list)
 
 

@@ -77,6 +77,11 @@ def _c10(f, c: Ctx):
             full = (f"{cap(c.label)}, {c.loc}, is invisible when presenting but gets in the way "
                     f"when you edit the slide. Confidence: definite.")
         return f"{c.label} was left on the slide", full
+    if kind == "offslide_title":
+        return ("the title is placed off the slide",
+                "The title is placed outside the slide, so it is not shown when presenting, but "
+                "screen readers still read it. If you did this on purpose, you can ignore this. "
+                "Confidence: definite.")
     if kind == "tiny":
         return (f"{c.label} is too small to see",
                 f"{cap(c.label)}, {c.loc}, is almost zero in size, so it cannot be seen. "

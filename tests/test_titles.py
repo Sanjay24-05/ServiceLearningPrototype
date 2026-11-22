@@ -53,3 +53,46 @@ def test_f3_resolves(monkeypatch, demo_deck, tmp_path):
     f3 = [f.fix for f in a.findings if f.fix and f.fix.kind == "F3"]
     r = export_and_verify(a, f3, tmp_path / "c.pptx", tmp_path / "v")
     assert r.resolved == 1 and r.new_visible == 0 and not r.rolled_back
+
+
+def _layout(prs, name):
+    return next(l for l in prs.slide_layouts if l.name == name)
+
+
+def test_mixed_layouts_not_compared(tmp_path):
+    # Review issue 1: section headers and caption slides have their own title position.
+    prs = Presentation()
+    for name in ["Title and Content"] * 5 + ["Section Header"] * 2 + ["Picture with Caption"]:
+        s = prs.slides.add_slide(_layout(prs, name))
+        s.shapes.title.text = name
+    p = tmp_path / "mixed.pptx"; prs.save(p)
+    assert check_titles(load_deck(p), None) == []
+
+
+def test_moved_title_found_within_its_layout(tmp_path):
+    prs = Presentation()
+    for i in range(5):
+        s = prs.slides.add_slide(_layout(prs, "Title and Content"))
+        s.shapes.title.text = f"T{i}"
+    s = prs.slides.add_slide(_layout(prs, "Section Header"))
+    s.shapes.title.text = "Part two"
+    prs.slides[2].shapes.title.top = prs.slides[2].shapes.title.top + Inches(0.6)
+    p = tmp_path / "moved.pptx"; prs.save(p)
+    assert [f.slide_index for f in check_titles(load_deck(p), None)] == [3]
+
+
+def test_offslide_title_is_not_moved(tmp_path):
+    # Review issue 3: a title parked off the slide keeps it for screen readers; never "fix" it.
+    from slideproof.checks import run_checks
+    prs = Presentation()
+    for i in range(4):
+        s = prs.slides.add_slide(_layout(prs, "Title Only"))
+        s.shapes.title.text = f"T{i}"
+    prs.slides[1].shapes.title.top = -Inches(2)
+    p = tmp_path / "hidden.pptx"; prs.save(p)
+    d = load_deck(p)
+    assert check_titles(d, None) == []
+    c10 = [f for f in run_checks(d, None) if f.check_id == "C10"]
+    assert len(c10) == 1 and c10[0].fix is None and c10[0].severity == "minor"
+    assert describe(c10[0], d).headline == "the title is placed off the slide"
+    assert "screen readers still read it" in describe(c10[0], d).full

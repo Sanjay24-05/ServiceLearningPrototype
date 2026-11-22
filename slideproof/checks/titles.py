@@ -8,14 +8,23 @@ _FLAG_TOL = 137160     # 0.15 in
 _MIN_TITLES = 3
 
 
+def _off_slide(b, slide) -> bool:
+    return b.right <= slide.x or b.x >= slide.right or b.bottom <= slide.y or b.y >= slide.bottom
+
+
 def _candidates(deck):
+    """Titles grouped by slide layout: a section header is never compared with a content slide."""
+    groups: dict[str, list] = {}
     for s in deck.slides:
         if s.hidden:
             continue
         for e in s.elements:
             if e.kind == "title" and e.placeholder_type == "TITLE" and not e.rotation % 360:
-                yield s, e
+                # A title parked off the slide keeps it for screen readers: never "fix" it.
+                if not _off_slide(e.bbox, deck.slide_rect):
+                    groups.setdefault(s.layout_key, []).append((s, e))
                 break
+    return groups.values()
 
 
 def _dominant(cands):
@@ -33,7 +42,13 @@ def _dominant(cands):
 
 
 def check_titles(deck, render=None) -> list[Finding]:
-    cands = list(_candidates(deck))
+    out: list[Finding] = []
+    for cands in _candidates(deck):
+        out.extend(_check_group(deck, cands))
+    return sorted(out, key=lambda f: f.slide_index)
+
+
+def _check_group(deck, cands) -> list[Finding]:
     if len(cands) < _MIN_TITLES:
         return []
     dom = _dominant(cands)

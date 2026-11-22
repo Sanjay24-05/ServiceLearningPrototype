@@ -53,9 +53,17 @@ def _theme_fonts(prs) -> set[str]:
             if el.get("typeface")}
 
 
+def _layout_key(slide) -> str:
+    try:
+        return str(slide.slide_layout.part.partname)
+    except Exception:
+        return ""
+
+
 def _load_slide(slide, index: int) -> SlideModel:
     sm = SlideModel(index=index, slide_id=slide.slide_id,
-                    hidden=slide._element.get("show") in ("0", "false"), title_text=None)
+                    hidden=slide._element.get("show") in ("0", "false"), title_text=None,
+                    layout_key=_layout_key(slide))
     _walk(slide.shapes, [], None, sm, [0])
     return sm
 

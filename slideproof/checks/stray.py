@@ -33,7 +33,7 @@ def check_stray(deck, render=None) -> list[Finding]:
             elif e.frame.w < _TINY and e.frame.h < _TINY:
                 kind = "tiny"
             elif _entirely_outside(e.bbox, slide):
-                kind = "offslide"
+                kind = "offslide_title" if e.kind == "title" else "offslide"
             if kind is None:
                 continue
             out.append(Finding("C10", s.index, s.slide_id, (e.id,), severity, "definite",
