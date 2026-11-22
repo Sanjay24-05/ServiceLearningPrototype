@@ -140,9 +140,10 @@ def test_report_states_what_is_checked(client, demo_deck):
     run_id = upload(client, "demo.pptx", demo_deck[0].read_bytes())
     wait_done(client, run_id)
     rep = client.get(f"/runs/{run_id}/report").text
-    assert ("This version checks two things: objects that stick out past the "
-            "slide edge, and stretched pictures. Overlap, text overflow, "
-            "contrast, fonts and title position are not checked yet.") in rep
+    assert ("This version checks seven things: objects that stick out past the slide edge, "
+            "stretched pictures, overlapping objects, low-resolution pictures, titles out of line "
+            "with the rest, stray fonts, and empty or stray objects. Text overflow, contrast and "
+            "text size are not checked yet.") in rep
     assert rep.index("This version checks") < rep.index("<form")
 
 
@@ -302,3 +303,11 @@ def test_coverage_sentence_in_summary_paragraph(client, tiny_deck):
     wait_done(client, run_id)
     rep = client.get(f"/runs/{run_id}/report").text
     assert re.search(r"<p>1 slide checked\. [^<]*\. This version checks", rep)
+
+
+def test_report_has_layout_details(client, demo_deck):
+    run_id = upload(client, "demo.pptx", demo_deck[0].read_bytes())
+    wait_done(client, run_id)
+    rep = client.get(f"/runs/{run_id}/report").text
+    assert "<summary>Layout of slide 4</summary>" in rep
+    assert re.search(r"<summary>Layout of slide 4</summary>\s*<ol>\s*<li>The title, in the top", rep)

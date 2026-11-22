@@ -1,5 +1,5 @@
 import os
-import socket
+from tests.ports import free_browser_port
 import threading
 import time
 
@@ -17,9 +17,7 @@ NAV_TIMEOUT = 120_000
 def live_server(tmp_path, monkeypatch):
     import uvicorn
     monkeypatch.setenv("SOFFICE_PATH", str(tmp_path / "missing-soffice.exe"))
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        port = s.getsockname()[1]
+    port = free_browser_port()
     app = create_app(tmp_path / "runs")
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port,
                                            log_level="warning"))

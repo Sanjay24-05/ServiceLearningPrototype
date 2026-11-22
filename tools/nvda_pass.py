@@ -15,7 +15,20 @@ from playwright.sync_api import sync_playwright
 from slideproof.web.app import create_app
 
 LOG = Path(sys.argv[1]); DECK = Path(sys.argv[2]); RUNS = Path(sys.argv[3])
-s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+BROWSER_UNSAFE_PORTS = {5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6697, 10080}
+
+
+def free_browser_port() -> int:
+    """A free local port that Edge will open (some ports give ERR_UNSAFE_PORT)."""
+    while True:
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+        if port not in BROWSER_UNSAFE_PORTS:
+            return port
+
+
+port = free_browser_port()
 server = uvicorn.Server(uvicorn.Config(create_app(RUNS), host="127.0.0.1", port=port, log_level="warning"))
 threading.Thread(target=server.run, daemon=True).start()
 while not server.started: time.sleep(0.1)
