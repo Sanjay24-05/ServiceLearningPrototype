@@ -147,7 +147,7 @@ def test_report_states_what_is_checked(client, demo_deck):
 
 
 def test_summary_singular_and_minor_only(client, tiny_deck):
-    path = tiny_deck([dict(kind="text", name="t", x=12.5, y=1, w=0.9, h=1, text="")])
+    path = tiny_deck([dict(kind="text", name="t", x=12.9, y=1, w=1, h=1, text="")])
     run_id = upload(client, "one.pptx", path.read_bytes())
     wait_done(client, run_id)
     rep = client.get(f"/runs/{run_id}/report").text
