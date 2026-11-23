@@ -12,6 +12,7 @@ from slideproof.loader import load_deck
 from slideproof.model import DeckModel
 from slideproof.prioritise import Report, prioritise
 from slideproof.render import RenderResult, render_deck
+from slideproof.render.link import link_spans
 
 
 @dataclass
@@ -30,6 +31,8 @@ def analyse(pptx: Path, run_dir: Path,
     deck = load_deck(pptx)
     progress("Rendering slides…")
     render = render_deck(pptx, run_dir, [s.hidden for s in deck.slides])
+    if render.status == "ok":
+        render.linked = link_spans(deck, render)
     n = len(deck.slides)
     for i in range(1, n + 1):
         progress(f"Checking slide {i} of {n}…")

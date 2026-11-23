@@ -90,3 +90,22 @@ def make_finding():
         return Finding(check_id, slide_index, slide_index, (eid,), severity,
                        "definite", magnitude, {}, fix=None)
     return make
+
+
+@pytest.fixture
+def make_render():
+    """Build a RenderResult by hand: make_render([[(text, (x, y, w, h) in EMU), ...] per slide])."""
+    from slideproof.render.pdf import RenderedSlide, RenderedSpan
+    from slideproof.render.pipeline import RenderResult
+    from slideproof.units import Rect
+
+    def make(slides_spans):
+        slides = []
+        for i, spans in enumerate(slides_spans):
+            if spans is None:
+                slides.append(None)
+                continue
+            slides.append(RenderedSlide(i, Path("x.png"), [
+                RenderedSpan(t, Rect(*b), "Arial", 18.0, (0, 0, 0)) for t, b in spans]))
+        return RenderResult("ok", None, slides)
+    return make

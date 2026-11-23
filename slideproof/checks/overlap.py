@@ -34,7 +34,7 @@ def check_overlap(deck, render=None) -> list[Finding]:
             if _has_text(upper) and lower.bbox.contains(upper.bbox) and (
                     not upper.filled or lower.kind == "picture"):
                 continue
-            finding = _pair(lower, upper)
+            finding = _pair(lower, upper, render)
             if finding:
                 cov, conf, lower_is_text = finding
                 out.append(Finding("C2", s.index, s.slide_id, (upper.id, lower.id), "visible",
@@ -42,12 +42,12 @@ def check_overlap(deck, render=None) -> list[Finding]:
     return out
 
 
-def _pair(lower, upper):
+def _pair(lower, upper, render=None):
     # Only covering something that shows content matters: text or a picture (or a table/chart).
     # A plain shape without text under another shape is decoration (icons, badges, frames).
     if lower.kind == "shape" and not _has_text(lower):
         return None
-    lc = content_box(lower)
+    lc = content_box(lower, render.linked.get(lower.id) if render else None)
     if lc is None:
         return None
     lower_rect, conf = lc
@@ -59,7 +59,7 @@ def _pair(lower, upper):
             return None
         cov = inter.area / lower_rect.area
     elif upper_is_text and lower_is_text:
-        uc = content_box(upper)
+        uc = content_box(upper, render.linked.get(upper.id) if render else None)
         if uc is None:
             return None
         inter = uc[0].intersect(lower_rect)

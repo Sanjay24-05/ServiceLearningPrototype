@@ -16,6 +16,7 @@ class RenderedSpan:
     font: str
     size_pt: float
     rgb: tuple[int, int, int]
+    bold: bool = False
 
 
 @dataclass
@@ -48,6 +49,7 @@ def read_pdf(pdf: Path, png_dir: Path, slide_w: int, slide_h: int) -> list[Rende
                             font=sp["font"],
                             size_pt=sp["size"],
                             rgb=((c >> 16) & 255, (c >> 8) & 255, c & 255),
+                            bold=bool(sp.get("flags", 0) & 16),
                         ))
             slides.append(RenderedSlide(i, png, spans))
     return slides

@@ -20,8 +20,16 @@ def _has_text(el: Element) -> bool:
     return bool(el.text and el.text.strip())
 
 
-def content_box(el: Element) -> tuple[Rect, str] | None:
-    """(rect, confidence) of what the element shows, or None when it shows nothing."""
+def content_box(el: Element, spans: list | None = None) -> tuple[Rect, str] | None:
+    """(rect, confidence) of what the element shows, or None when it shows nothing.
+
+    With rendered text spans, a text element's box is their padded union (definite)."""
+    if spans and el.kind in _TEXT_KINDS and _has_text(el):
+        x0 = min(s.bbox.x for s in spans)
+        y0 = min(s.bbox.y for s in spans)
+        x1 = max(s.bbox.right for s in spans)
+        y1 = max(s.bbox.bottom for s in spans)
+        return Rect(x0 - _PAD, y0 - _PAD, x1 - x0 + 2 * _PAD, y1 - y0 + 2 * _PAD), "definite"
     if el.kind in ("picture", "table", "chart") or (el.filled and not _has_text(el)):
         return el.bbox, "definite"
     if not _has_text(el):
