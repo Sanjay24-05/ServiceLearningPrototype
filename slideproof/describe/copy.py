@@ -114,6 +114,14 @@ def _c6(f, c: Ctx):
             f"Confidence: definite.")
 
 
+def _c7(f, c: Ctx):
+    m = f.measurements
+    return (f"{c.label} has low contrast",
+            f"{cap(c.label)}, {c.loc}, has text that is too close in colour to its background "
+            f"(contrast {m['ratio']:.1f}:1, at least {m['need']:g}:1 is needed), so it will be hard to "
+            f"read, especially on a projector. Confidence: {f.confidence}.")
+
+
 def _c8(f, c: Ctx):
     dx, dy = f.measurements["dx"], f.measurements["dy"]
     others = f.measurements["others"]
@@ -136,7 +144,7 @@ def _c9(f, c: Ctx):
             f"{main}, so this text will look out of place. Confidence: definite.")
 
 
-COPY: dict[str, Callable] = {"C1": _c1, "C2": _c2, "C3": _c3, "C4": _c4, "C5": _c5, "C6": _c6,
+COPY: dict[str, Callable] = {"C1": _c1, "C2": _c2, "C3": _c3, "C4": _c4, "C5": _c5, "C6": _c6, "C7": _c7,
                              "C8": _c8, "C9": _c9, "C10": _c10}
 
 # (headline, full) for findings grouped by the prioritiser; {c} = count, {conf} = confidence.
@@ -153,6 +161,8 @@ GROUPED: dict[str, tuple[str, str]] = {
            "{c} pictures on this slide are low resolution. Confidence: definite."),
     "C6": ("{c} text boxes have small text",
            "{c} text boxes on this slide have small text. Confidence: definite."),
+    "C7": ("{c} text boxes have low contrast",
+           "{c} text boxes on this slide have low contrast. Confidence: {conf}."),
     "C8": ("{c} titles sit out of line with the rest",
            "{c} titles on this slide sit out of line with the rest. Confidence: definite."),
     "C9": ("{c} text boxes use a font used almost nowhere else",
