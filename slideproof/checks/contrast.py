@@ -9,7 +9,9 @@ from PIL import Image
 from slideproof.findings import Finding
 
 _BG_DISTANCE = 60     # RGB distance from the text colour for a pixel to count as background
-_MIN_BG_PIXELS = 20   # fewer background pixels than this: no reliable measurement, skip the span
+_MIN_BG_PIXELS = 20   # fewer background pixels than this: measure the ring outside the box instead
+_RING_PX = 3          # width of that ring in pixels
+_SAME_COLOUR = 10     # ring this close to the text colour: no measurable difference, skip the span
 
 
 def _channel(c: int) -> float:
@@ -18,7 +20,7 @@ def _channel(c: int) -> float:
 
 
 def _luminance(rgb) -> float:
-    r, g, b = (_channel(int(c)) for c in rgb)
+    r, g, b = (_channel(round(float(c))) for c in rgb)
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
@@ -33,8 +35,14 @@ def _need(span) -> float:
     return 3 if large else 4.5
 
 
+def _distances(pixels: np.ndarray, rgb) -> np.ndarray:
+    return np.sqrt(((pixels - np.asarray(rgb, dtype=np.float32)) ** 2).sum(axis=-1))
+
+
 def _background(pixels: np.ndarray, sx: float, sy: float, span):
-    """Median colour of the pixels in the span's box that are clearly not the text colour."""
+    """Colour behind the span: the median of the pixels in its box that are clearly not the
+    text colour; for very faint text (too few such pixels) the median of a thin ring just
+    outside the box, which glyphs rarely touch. None when nothing measurable is there."""
     h, w = pixels.shape[:2]
     b = span.bbox
     x0, y0 = max(0, floor(b.x * sx)), max(0, floor(b.y * sy))
@@ -42,11 +50,21 @@ def _background(pixels: np.ndarray, sx: float, sy: float, span):
     if x1 <= x0 or y1 <= y0:
         return None
     crop = pixels[y0:y1, x0:x1].reshape(-1, 3)
-    dist = np.sqrt(((crop - np.asarray(span.rgb, dtype=np.float32)) ** 2).sum(axis=1))
-    bg = crop[dist > _BG_DISTANCE]
-    if len(bg) < _MIN_BG_PIXELS:
+    bg = crop[_distances(crop, span.rgb) > _BG_DISTANCE]
+    if len(bg) >= _MIN_BG_PIXELS:
+        return tuple(np.median(bg, axis=0))
+    rx0, ry0 = max(0, x0 - _RING_PX), max(0, y0 - _RING_PX)
+    rx1, ry1 = min(w, x1 + _RING_PX), min(h, y1 + _RING_PX)
+    outer = pixels[ry0:ry1, rx0:rx1]
+    mask = np.ones(outer.shape[:2], dtype=bool)
+    mask[y0 - ry0:y1 - ry0, x0 - rx0:x1 - rx0] = False
+    ring = outer[mask]
+    if len(ring) == 0:
         return None
-    return tuple(np.median(bg, axis=0))
+    median = np.median(ring, axis=0)
+    if _distances(median, span.rgb) <= _SAME_COLOUR:
+        return None
+    return tuple(median)
 
 
 def _over_picture(slide, el, span) -> bool:
@@ -83,5 +101,5 @@ def check_contrast(deck, render=None) -> list[Finding]:
             conf = "likely" if _over_picture(s, e, span) else "definite"
             out.append(Finding("C7", s.index, s.slide_id, (e.id,), "visible", conf,
                                min(1.0, (need - ratio) / need),
-                               {"ratio": round(ratio, 1), "need": need}))
+                               {"ratio": floor(ratio * 10) / 10, "need": need}))
     return out

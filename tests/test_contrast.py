@@ -178,3 +178,60 @@ def test_demo_slide7_two_contrast_findings(demo_deck, tmp_path):
     assert got["photo-caption"].confidence == "likely" and got["photo-caption"].slide_index == deck.slides[6].index
     for f in got.values():
         assert f.severity == "visible" and f.measurements["need"] == 3
+
+
+def test_very_faint_text_flagged_from_ring(tiny_deck, make_render, tmp_path):
+    # #E0E0E0 is within 60 RGB of white, so no pixel in the box counts as background:
+    # the ring just outside the box measures it instead.
+    deck = load_deck(tiny_deck([
+        {"kind": "textbox", "name": "faint", "x": 1, "y": 1, "w": 5, "h": 1, "text": "Faint"}]))
+    png = _slide_png(tmp_path / "s.png", (255, 255, 255), (0xE0, 0xE0, 0xE0), (1.1, 1.1, 3, 0.5))
+    render = _render(make_render, png, deck, {"faint": [((1.1, 1.1, 3, 0.5), (0xE0,) * 3, 12.0, False)]})
+    (f,) = check_contrast(deck, render)
+    assert f.measurements == {"ratio": 1.3, "need": 4.5} and f.confidence == "definite"
+
+
+def test_ratio_never_rounds_up_to_need(tiny_deck, make_render, tmp_path):
+    deck = load_deck(tiny_deck([
+        {"kind": "textbox", "name": "box", "x": 1, "y": 1, "w": 5, "h": 1, "text": "Grey"}]))
+    grey = (0x77, 0x77, 0x77)  # 4.48:1 on white
+    png = _slide_png(tmp_path / "s.png", (255, 255, 255), grey, (1.1, 1.1, 3, 0.5))
+    (f,) = check_contrast(deck, _render(make_render, png, deck, {"box": [((1.1, 1.1, 3, 0.5), grey, 12.0, False)]}))
+    assert f.measurements == {"ratio": 4.4, "need": 4.5}
+
+
+def test_span_off_the_png_ignored(tiny_deck, make_render, tmp_path):
+    deck = load_deck(tiny_deck([
+        {"kind": "textbox", "name": "box", "x": 1, "y": 1, "w": 5, "h": 1, "text": "Grey"}]))
+    png = _slide_png(tmp_path / "s.png", (255, 255, 255), (0xBB,) * 3, (1.1, 1.1, 3, 0.5))
+    render = _render(make_render, png, deck, {"box": [((20, 10, 3, 0.5), (0xBB,) * 3, 12.0, False)]})
+    assert check_contrast(deck, render) == []
+
+
+def test_contrast_skipped_when_render_failed(tiny_deck, make_render, tmp_path):
+    deck = load_deck(tiny_deck([
+        {"kind": "textbox", "name": "box", "x": 1, "y": 1, "w": 5, "h": 1, "text": "Grey"}]))
+    png = _slide_png(tmp_path / "s.png", (255, 255, 255), (0xBB,) * 3, (1.1, 1.1, 3, 0.5))
+    render = _render(make_render, png, deck, {"box": [((1.1, 1.1, 3, 0.5), (0xBB,) * 3, 12.0, False)]})
+    render.status = "failed"
+    assert check_contrast(deck, render) == []
+
+
+@pytest.mark.parametrize("far,ratio", [(20, None), (19, 3.5)])
+def test_far_pixel_boundary(tiny_deck, make_render, tmp_path, far, ratio):
+    # 10 x 7.5 in slide at 96 px per inch, so the span box maps to whole pixels 96..192 x 96..144.
+    # Inside the box: span colour plus `far` black pixels. Outside (the ring): white.
+    # 20 far pixels -> black background (5.9:1, fine); 19 -> falls back to the white ring (3.5:1, flagged).
+    deck = load_deck(tiny_deck([
+        {"kind": "textbox", "name": "box", "x": 1, "y": 1, "w": 5, "h": 1, "text": "Grey"}],
+        slide_w=inches(10)))
+    grey = (0x88, 0x88, 0x88)
+    img = Image.new("RGB", (960, 720), (255, 255, 255))
+    ImageDraw.Draw(img).rectangle([96, 96, 191, 143], fill=grey)
+    for i in range(far):
+        img.putpixel((100 + i, 100), (0, 0, 0))
+    png = tmp_path / "s.png"
+    img.save(png)
+    render = _render(make_render, png, deck, {"box": [((1, 1, 1, 0.5), grey, 12.0, False)]})
+    got = [f.measurements["ratio"] for f in check_contrast(deck, render)]
+    assert got == ([] if ratio is None else [ratio])
