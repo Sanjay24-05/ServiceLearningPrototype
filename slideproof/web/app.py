@@ -226,7 +226,9 @@ def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
         path = compare.image_path(run.dir, num)
         if not path.is_file():
             return error(request, "This image is not available.", 404)
-        return FileResponse(path, media_type="image/png")
+        # A later export of this run rewrites the image at the same URL.
+        return FileResponse(path, media_type="image/png",
+                            headers={"Cache-Control": "no-store"})
 
     @app.get("/runs/{run_id}/download")
     def download(request: Request, run_id: str):

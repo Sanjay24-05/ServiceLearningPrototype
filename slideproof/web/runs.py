@@ -131,8 +131,8 @@ def startup_check() -> list[str]:
     problems: list[str] = []
     if find_soffice() is None:
         problems.append(
-            "LibreOffice was not found. Text overflow and contrast checks will "
-            "be skipped. Install LibreOffice 7.6 or later, or set SOFFICE_PATH.")
+            "LibreOffice was not found. Text overflow, contrast and text size checks "
+            "will be skipped. Install LibreOffice 7.6 or later, or set SOFFICE_PATH.")
     names: list[str] = []
     for d in _font_dirs():
         try:

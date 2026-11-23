@@ -375,3 +375,12 @@ def test_result_has_no_compare_without_render(client, demo_deck):
 def test_compare_image_404_for_unknown_run_or_bad_number(client):
     assert client.get("/runs/nope/compare/1.png").status_code == 404
     assert client.get("/runs/nope/compare/x.png").status_code == 404
+
+
+def test_startup_note_names_the_skipped_checks(monkeypatch, tmp_path):
+    # Same three checks as the report's note when rendering is unavailable.
+    from slideproof.web import runs
+    monkeypatch.setattr(runs, "find_soffice", lambda: None)
+    (note,) = [p for p in runs.startup_check() if p.startswith("LibreOffice")]
+    assert note == ("LibreOffice was not found. Text overflow, contrast and text size checks "
+                    "will be skipped. Install LibreOffice 7.6 or later, or set SOFFICE_PATH.")

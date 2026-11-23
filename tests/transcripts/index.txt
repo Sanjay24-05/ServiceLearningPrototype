@@ -2,7 +2,7 @@ focus: page body (nothing focused)
 heading level 1: Check slide layout
 text: Your file stays on this computer. Nothing is uploaded to the internet.
 heading level 2: Before you start
-text: LibreOffice was not found. Text overflow and contrast checks will be skipped. Install LibreOffice 7.6 or later, or set SOFFICE_PATH.
+text: LibreOffice was not found. Text overflow, contrast and text size checks will be skipped. Install LibreOffice 7.6 or later, or set SOFFICE_PATH.
 text: PowerPoint file (.pptx)
 file upload: PowerPoint file (.pptx)
 button: Check slides

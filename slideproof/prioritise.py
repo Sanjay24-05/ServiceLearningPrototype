@@ -25,17 +25,21 @@ def score(f: Finding) -> float:
 
 
 def _group(findings: list[Finding]) -> list[Finding]:
+    """Collapse more than GROUP_THRESHOLD findings of one check on one slide. Findings are
+    grouped within their severity, so a group's tier is its members' tier: size never promotes
+    minor findings (footer contrast, say) into the visible list. A group is "likely" when any
+    member is."""
     buckets: dict[tuple, list[Finding]] = defaultdict(list)
     for f in findings:
-        buckets[(f.check_id, f.slide_index)].append(f)
+        buckets[(f.check_id, f.slide_index, f.severity)].append(f)
     out: list[Finding] = []
     for group in buckets.values():
         if len(group) <= GROUP_THRESHOLD:
             out.extend(group)
             continue
         ids = tuple(sorted({e for f in group for e in f.element_ids}))
-        severity = "visible" if any(f.severity == "visible" for f in group) else "minor"
-        out.append(replace(group[0], element_ids=ids, severity=severity,
+        conf = "likely" if any(f.confidence == "likely" for f in group) else group[0].confidence
+        out.append(replace(group[0], element_ids=ids, confidence=conf,
                            magnitude=max(f.magnitude for f in group),
                            measurements={"grouped": len(group)}, fix=None))
     return out
