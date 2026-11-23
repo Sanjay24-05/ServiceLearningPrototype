@@ -235,3 +235,57 @@ def test_far_pixel_boundary(tiny_deck, make_render, tmp_path, far, ratio):
     render = _render(make_render, png, deck, {"box": [((1, 1, 1, 0.5), grey, 12.0, False)]})
     got = [f.measurements["ratio"] for f in check_contrast(deck, render)]
     assert got == ([] if ratio is None else [ratio])
+
+
+def _placeholder_deck(tmp_path, ph_type):
+    """A "Title and Content" slide whose ph_type placeholder (cloned from the layout) has text."""
+    from pptx import Presentation
+    from pptx.enum.shapes import PP_PLACEHOLDER
+    prs = Presentation()
+    prs.slide_width = inches(13.333)  # the PNG frame used here
+    layout = prs.slide_layouts[1]
+    s = prs.slides.add_slide(layout)
+    want = getattr(PP_PLACEHOLDER, ph_type)
+    ph = next((p for p in s.placeholders if p.placeholder_format.type == want), None)
+    if ph is None:
+        lp = next(p for p in layout.placeholders if p.placeholder_format.type == want)
+        s.shapes.clone_placeholder(lp)
+        ph = next(p for p in s.placeholders if p.placeholder_format.type == want)
+    ph.text_frame.text = "7"
+    ph.name = "target"
+    p = tmp_path / f"ph-{ph_type}.pptx"
+    prs.save(p)
+    return load_deck(p)
+
+
+@pytest.mark.parametrize("ph_type, severity", [("SLIDE_NUMBER", "minor"), ("FOOTER", "minor"),
+                                               ("DATE", "minor"), ("OBJECT", "visible")])
+def test_slide_furniture_low_contrast_is_minor(tmp_path, make_render, ph_type, severity):
+    # Footer, date and slide number come with the template; real failures, but not the author's.
+    # OBJECT is the layout's content placeholder, loaded as a body placeholder.
+    deck = _placeholder_deck(tmp_path, ph_type)
+    target = next(e for e in deck.slides[0].elements if e.name == "target")
+    x, y = target.bbox.x / 914400 + 0.05, target.bbox.y / 914400 + 0.05
+    png = _slide_png(tmp_path / "s.png", (255, 255, 255), (0xBB, 0xBB, 0xBB), (x, y, 0.6, 0.25))
+    render = _render(make_render, png, deck, {"target": [((x, y, 0.6, 0.25), (0xBB,) * 3, 12.0, False)]})
+    (f,) = check_contrast(deck, render)
+    assert f.check_id == "C7" and f.severity == severity and f.confidence == "definite"
+    if ph_type == "OBJECT":
+        assert target.kind == "body" and target.placeholder_type not in ("FOOTER", "DATE", "SLIDE_NUMBER")
+
+
+def test_minor_low_contrast_reads_well_and_goes_in_the_minor_list(tmp_path, make_render):
+    from slideproof.describe import describe
+    from slideproof.prioritise import prioritise
+    deck = _placeholder_deck(tmp_path, "SLIDE_NUMBER")
+    target = next(e for e in deck.slides[0].elements if e.name == "target")
+    x, y = target.bbox.x / 914400 + 0.05, target.bbox.y / 914400 + 0.05
+    png = _slide_png(tmp_path / "s.png", (255, 255, 255), (0xBB, 0xBB, 0xBB), (x, y, 0.6, 0.25))
+    render = _render(make_render, png, deck, {"target": [((x, y, 0.6, 0.25), (0xBB,) * 3, 12.0, False)]})
+    (f,) = check_contrast(deck, render)
+    item = describe(f, deck)
+    assert item.headline.endswith("has low contrast")
+    assert "visible" not in item.full and item.full.endswith("Confidence: definite.")
+    assert "visible" not in " ".join(GROUPED["C7"])
+    report = prioritise([f], 1, 1.0)
+    assert report.visible == [] and [g.check_id for g in report.minor] == ["C7"]

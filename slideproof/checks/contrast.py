@@ -6,6 +6,7 @@ from math import ceil, floor
 import numpy as np
 from PIL import Image
 
+from slideproof.checks.content import FURNITURE_PLACEHOLDERS
 from slideproof.findings import Finding
 
 _BG_DISTANCE = 60     # RGB distance from the text colour for a pixel to count as background
@@ -99,7 +100,10 @@ def check_contrast(deck, render=None) -> list[Finding]:
                 continue
             _, ratio, need, span = worst
             conf = "likely" if _over_picture(s, e, span) else "definite"
-            out.append(Finding("C7", s.index, s.slide_id, (e.id,), "visible", conf,
+            # Footer, date and slide number: real failures, but template furniture the author
+            # rarely chose, so they go in the minor list rather than crowd the visible one.
+            severity = "minor" if e.placeholder_type in FURNITURE_PLACEHOLDERS else "visible"
+            out.append(Finding("C7", s.index, s.slide_id, (e.id,), severity, conf,
                                min(1.0, (need - ratio) / need),
                                {"ratio": floor(ratio * 10) / 10, "need": need}))
     return out

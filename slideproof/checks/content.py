@@ -15,6 +15,10 @@ _GLYPH_EM = 0.5      # average glyph width as a fraction of the font size
 _LINE_SPACING = 1.2
 _PAD = 45720         # 0.05 in
 
+# Slide furniture: placeholders that come with the template rather than the author's content
+# (Review Focus 3). C6 skips them; C7 reports them as minor.
+FURNITURE_PLACEHOLDERS = ("FOOTER", "DATE", "SLIDE_NUMBER")
+
 
 def _has_text(el: Element) -> bool:
     return bool(el.text and el.text.strip())

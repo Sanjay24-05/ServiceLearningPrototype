@@ -3,9 +3,9 @@ from __future__ import annotations
 
 from math import floor
 
+from slideproof.checks.content import FURNITURE_PLACEHOLDERS as _EXEMPT  # small on purpose
 from slideproof.findings import Finding
 
-_EXEMPT = ("FOOTER", "DATE", "SLIDE_NUMBER")  # small on purpose (Review Focus 3)
 _BODY_KINDS = ("body", "textbox")
 _VISIBLE_PT = 12
 _MINOR_PT = 18

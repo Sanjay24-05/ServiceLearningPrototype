@@ -119,19 +119,16 @@ def template_decks(tmp_path_factory):
     return out
 
 
-# Low contrast the templates really have, measured with rendering and checked by eye against the
-# rendered slides and the template XML (Task 6 report). C7 measures these correctly; they are
-# design choices, not false alarms, so they are listed here rather than exempted in the check.
-# (slide, text): white or light slide numbers on bright theme colours, and decorative step numbers.
+# Visible low contrast the templates really have, measured with rendering and checked by eye
+# against the rendered slides and the template XML (Task 6 report). C7 measures these correctly;
+# they are design choices (decorative step numbers), not false alarms, so they are listed here
+# rather than exempted in the check. (slide, text)
+# Slide numbers with low contrast (Blue_Curve, Focus, Lights, Midnightblue, Sunset) are minor:
+# C7 reports footer, date and slide-number placeholders as minor, which this guard allows.
 KNOWN_LOW_CONTRAST = {
-    "Blue_Curve": {(2, "2")},                       # slide number, white on #73C9ED, 1.8:1
     "Candy": {(2, "2"), (6, "2"), (10, "3")},       # white on #60C4E4 2.0:1; purple on amber 2.9:1
-    "Focus": {(2, "2"), (3, "3"), (4, "4")},        # slide number, #DDD on #168253, 3.5:1 (14 pt)
     "Growing_Liberty": {(2, "01"), (2, "02"), (2, "03"), (2, "04"),   # #62CF51 on white, 1.9:1
                         (4, "1"), (4, "2"), (4, "3"), (4, "4")},      # white on #41AEEB, 2.4:1
-    "Lights": {(2, "2")},                           # slide number, white on #EF3280, 3.8:1 (14 pt)
-    "Midnightblue": {(2, "2")},                     # slide number, white on #1ABC9C, 2.4:1
-    "Sunset": {(1, "1")},                           # slide number, white on #FF9A00, 2.1:1
 }
 
 
@@ -154,11 +151,15 @@ def test_template_decks_have_no_findings(template_decks, template, tmp_path):
         # Small template text (captions, sample labels) may be a minor note; never visible.
         if f.check_id == "C6" and f.severity == "minor":
             return True
+        # Low contrast on footer, date or slide number is minor (template furniture).
+        if f.check_id == "C7" and f.severity == "minor":
+            return True
         return f.check_id == "C10" and f.severity == "minor" and placeholder_note
 
     others = [(f.check_id, f.slide_index, f.severity, d.element(f.element_ids[0]).name)
-              for f in a.findings if not allowed(f) and f.check_id != "C7"]
+              for f in a.findings if not allowed(f)
+              and not (f.check_id == "C7" and f.severity == "visible")]
     assert others == []
     low_contrast = {(f.slide_index, d.element(f.element_ids[0]).text.strip())
-                    for f in a.findings if f.check_id == "C7"}
+                    for f in a.findings if f.check_id == "C7" and f.severity == "visible"}
     assert low_contrast == KNOWN_LOW_CONTRAST.get(template, set())
