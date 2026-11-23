@@ -157,3 +157,12 @@ def test_file_button_matches_buttons(live_server, page):
     h = page.evaluate("getComputedStyle(document.querySelector('#file'), "
                       "'::file-selector-button').minHeight")
     assert h == "44px"
+
+
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_probably_intentional_report_has_no_serious_axe_violations(live_server, page, tmp_path, scheme):
+    from tests.test_intent_pipeline import _logo_deck
+    page.emulate_media(color_scheme=scheme)
+    reach_report(page, live_server, _logo_deck(tmp_path / "logo.pptx"))
+    assert page.locator("h2", has_text="Probably intentional (6)").count() == 1
+    assert_no_serious(page, f"intentional report ({scheme})")

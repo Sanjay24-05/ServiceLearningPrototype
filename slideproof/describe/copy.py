@@ -141,3 +141,26 @@ GROUPED: dict[str, tuple[str, str]] = {
 
 FALLBACK = ("a layout problem was found",
             "A layout problem was found on this slide. Confidence: {conf}.")
+
+
+INTENT_REASONS = {
+    "repeats": "the same object appears in the same place on {n} other {slides}",
+    "edges": "it runs along the edge of the slide like a design element",
+    "span": "it spans the full width or height of the slide",
+    "no_text": "it contains no text",
+    "behind": "it sits behind the other objects",
+    "layout": "it comes from the slide's layout",
+}
+INTENT_NO_REASON = "it looks like the deliberate designs the model learned from"
+INTENT_GROUPED = "Probably intentional: the model judged these objects as deliberate design."
+
+
+def intent_sentence(measurements: dict) -> str:
+    """'Probably intentional (93% sure): reason and reason.' for a judged finding."""
+    pct = min(99, round(measurements["intent_p"] * 100))  # never claim certainty
+    n = measurements.get("intent_repeats", 0)
+    reasons = [INTENT_REASONS[c].format(n=n, slides="slide" if n == 1 else "slides") for c in measurements.get("intent_reasons", [])
+               if c in INTENT_REASONS]
+    if not reasons:
+        reasons = [INTENT_NO_REASON]
+    return f"Probably intentional ({pct}% sure): {' and '.join(reasons)}."

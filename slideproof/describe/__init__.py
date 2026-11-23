@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from slideproof.describe.copy import COPY, FALLBACK, GROUPED, Ctx
+from slideproof.describe.copy import (COPY, FALLBACK, GROUPED, INTENT_GROUPED, Ctx,
+                                    intent_sentence)
 from slideproof.describe.names import element_label
 from slideproof.describe.spatial import grid_location
 from slideproof.findings import Finding
@@ -61,7 +62,7 @@ def _change_log(f: Finding, label: str, el) -> str | None:
     return None
 
 
-def describe(finding: Finding, deck) -> Description:
+def describe(finding: Finding, deck, intentional: bool = False) -> Description:
     f = finding
     n = f.slide_index
     grouped = "grouped" in f.measurements
@@ -80,6 +81,11 @@ def describe(finding: Finding, deck) -> Description:
         headline, full = COPY[f.check_id](f, Ctx(deck, _slide_of(deck, n), el, label, loc))
     else:
         headline, full = FALLBACK[0], FALLBACK[1].format(conf=f.confidence)
+
+    if grouped and intentional:
+        full = f"{full} {INTENT_GROUPED}"
+    elif intentional and "intent_p" in f.measurements:
+        full = f"{full} {intent_sentence(f.measurements)}"
 
     slide = _slide_of(deck, n)
     prefix = f"Slide {n} (hidden slide)" if slide.hidden else f"Slide {n}"

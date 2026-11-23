@@ -8,6 +8,12 @@
 {% for c in checks %}<li>{{ c }}</li>
 {% endfor %}</ul>
 <p>{{ not_checked }}</p>
+{% if accuracy %}
+<h2>What "Probably intentional" means</h2>
+<p>Some things that look like mistakes are deliberate design: a logo that bleeds off a corner, a band that runs along an edge, a background shape behind everything. Slide Proof has a small model that runs on this computer and learned from example decks which patterns usually look deliberate. When it is fairly sure, the finding goes under "Probably intentional" with the reasons. Nothing is hidden: it is still listed and counted, and its fix is available but not ticked for you. The model learned from synthetic example decks, so it is a guess; check those findings if you are unsure.</p>
+<h2>How accurate the model is</h2>
+<p>On synthetic test decks it never saw, it kept {{ accuracy.mistake_recall }}% of planted mistakes in the main lists and recognised {{ accuracy.deliberate_recall }}% of deliberate designs. All training data is synthetic; see the model card.</p>
+{% endif %}
 <h2>How fixes work</h2>
 <p>Fixes are only applied to a copy of your file, never the original. After fixing, Slide Proof checks the copy again and undoes any fix that did not work or caused a new problem.</p>
 <h2>Your privacy</h2>

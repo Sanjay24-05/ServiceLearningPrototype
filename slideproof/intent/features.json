@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "features": [
+    "is_c1",
+    "is_c2",
+    "magnitude",
+    "edges_touched",
+    "span_w",
+    "span_h",
+    "area_share",
+    "has_text",
+    "kind_picture",
+    "kind_shape",
+    "kind_text",
+    "kind_other",
+    "is_placeholder",
+    "in_group",
+    "z_rank",
+    "repeats",
+    "same_layout_repeats",
+    "elements_on_slide",
+    "rotated",
+    "lower_is_text",
+    "upper_inside_lower"
+  ],
+  "sklearn": "1.5.2",
+  "threshold": 0.8,
+  "family": "hgb"
+}

@@ -59,3 +59,7 @@ def unchecked_sentence(deck) -> str | None:
     word = "slide" if len(slides) == 1 else "slides"
     return (f"Some objects could not be checked: {plural(count, 'object')} "
             f"on {word} {_join(str(i) for i in slides)}.")
+
+
+INTENT_COVERAGE = ('A small on-device model sorts findings that look like deliberate design '
+                   'into "Probably intentional".')

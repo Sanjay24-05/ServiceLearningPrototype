@@ -1,0 +1,97 @@
+{
+  "n_decks": 120,
+  "seed": 7,
+  "family": "hgb",
+  "threshold": 0.8,
+  "safety_target_missed": false,
+  "mistake_recall": 0.9764,
+  "deliberate_recall": 0.9433,
+  "precision": 0.9727,
+  "f1": 0.9578,
+  "class_counts_before_cap": {
+    "deliberate": 874,
+    "mistake": 827,
+    "total": 1701
+  },
+  "class_counts_after_cap": {
+    "deliberate": 611,
+    "mistake": 706,
+    "total": 1317
+  },
+  "class_counts_judged": {
+    "deliberate": 529,
+    "mistake": 593,
+    "total": 1122
+  },
+  "rows_dropped": {
+    "mixed": 29,
+    "content_only": 0
+  },
+  "cap_per_instance": 3,
+  "families": {
+    "logreg": {
+      "threshold": 0.87,
+      "target_missed": false,
+      "mistake_recall": 0.9511,
+      "deliberate_recall": 0.5936,
+      "precision": 0.9155,
+      "f1": 0.7202,
+      "confusion": {
+        "tp": 314,
+        "fp": 29,
+        "fn": 215,
+        "tn": 564
+      }
+    },
+    "hgb": {
+      "threshold": 0.8,
+      "target_missed": false,
+      "mistake_recall": 0.9764,
+      "deliberate_recall": 0.9433,
+      "precision": 0.9727,
+      "f1": 0.9578,
+      "confusion": {
+        "tp": 499,
+        "fp": 14,
+        "fn": 30,
+        "tn": 579
+      }
+    }
+  },
+  "held_out": {
+    "demo_deck": {
+      "judged": 1,
+      "moved": 0,
+      "planted": 1,
+      "planted_moved": 0,
+      "moved_findings": []
+    },
+    "corpus": {
+      "judged": 1,
+      "moved": 0,
+      "planted": 1,
+      "planted_moved": 0,
+      "moved_findings": []
+    },
+    "yellow_idea": {
+      "judged": 5,
+      "moved": 1,
+      "planted": 0,
+      "planted_moved": 0,
+      "moved_findings": [
+        {
+          "check": "C1",
+          "slide": 8,
+          "shapes": [
+            ""
+          ],
+          "p": 1.0,
+          "planted": false
+        }
+      ],
+      "status": "ok"
+    }
+  },
+  "planted_mistakes_moved": 0,
+  "yellow_idea_moved": 1
+}
