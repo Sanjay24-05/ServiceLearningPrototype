@@ -6,6 +6,7 @@ import warnings
 from dataclasses import replace
 from pathlib import Path
 
+from slideproof.checks.content import content_box
 from slideproof.findings import Finding
 from slideproof.intent.features import _TEXT_KINDS, FEATURES, _has_text, features_for
 
@@ -90,6 +91,19 @@ def _judgeable(f, deck) -> bool:
     return False
 
 
+def _estimate_magnitude(f, deck) -> float:
+    """The magnitude as the model was trained on it: estimate-based, never from rendered text
+    (raw_candidates in intent/features.py is the definition; keep the two in step)."""
+    if f.check_id == "C1":
+        b = deck.element(f.element_ids[0]).bbox
+        inter = b.intersect(deck.slide_rect)
+        return 1 - (inter.area / b.area if inter and b.area > 0 else 0.0)
+    upper, lower = (deck.element(i) for i in f.element_ids[:2])
+    box = content_box(lower)
+    inter = upper.bbox.intersect(box[0]) if box else None
+    return inter.area / box[0].area if inter and box[0].area > 0 else f.magnitude
+
+
 def judge(findings: list[Finding], deck) -> tuple[list[Finding], str | None]:
     bundle = _load()
     if bundle is None:
@@ -102,7 +116,7 @@ def judge(findings: list[Finding], deck) -> tuple[list[Finding], str | None]:
     if not todo:
         return list(findings), None
     try:
-        vecs = {id(f): features_for(f.check_id, f.element_ids, f.magnitude, deck) for f in todo}
+        vecs = {id(f): features_for(f.check_id, f.element_ids, _estimate_magnitude(f, deck), deck) for f in todo}
         probs = model.predict_proba([vecs[id(f)] for f in todo])[:, 1]
         judged = {id(f): (float(p), vecs[id(f)]) for f, p in zip(todo, probs)}
     except Exception:  # a broken model must never break the report

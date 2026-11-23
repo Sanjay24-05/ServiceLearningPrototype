@@ -1,10 +1,12 @@
 """C1: element extends past the slide edge."""
 from __future__ import annotations
 
+from slideproof.checks.content import _TEXT_KINDS
 from slideproof.checks.distortion import f2_fix
 from slideproof.checks.stray import is_empty_text
 from slideproof.findings import Finding, Fix
 from slideproof.fixes.geometry import pull_on_slide
+from slideproof.units import Rect
 
 
 def check_offslide(deck, render=None) -> list[Finding]:
@@ -16,6 +18,14 @@ def check_offslide(deck, render=None) -> list[Finding]:
             b = e.bbox
             if b.area <= 0:
                 continue
+            spans = render.linked.get(e.id) if render else None
+            if spans and e.kind in _TEXT_KINDS:
+                # Rendered text: judge where the text actually is, not the box around it.
+                b = Rect(min(x.bbox.x for x in spans), min(x.bbox.y for x in spans),
+                         max(x.bbox.right for x in spans) - min(x.bbox.x for x in spans),
+                         max(x.bbox.bottom for x in spans) - min(x.bbox.y for x in spans))
+                if b.area <= 0:
+                    b = e.bbox
             inter = b.intersect(slide)
             visible = inter.area / b.area if inter else 0.0
             outside = 1 - visible
@@ -41,7 +51,7 @@ def check_offslide(deck, render=None) -> list[Finding]:
             # C4's F2 already carries the element back on-slide; offering F1
             # as well would overwrite it and get rolled back.
             if e.group_id is None and e.fixable and f2_fix(e, slide) is None:
-                res = pull_on_slide(e.frame, b, slide, rotated=e.rotation % 360 != 0)
+                res = pull_on_slide(e.frame, e.bbox, slide, rotated=e.rotation % 360 != 0)
                 if res:
                     frame, scaled = res
                     fix = Fix("F1", "safe", e.id, {"frame": frame.as_list(), "scaled": scaled})
