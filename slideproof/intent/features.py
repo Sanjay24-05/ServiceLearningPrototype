@@ -32,6 +32,24 @@ def _has_text(e) -> bool:
     return bool(e.text and e.text.strip())
 
 
+def c1_outside(el, slide) -> float:
+    """Fraction of the element's box outside the slide (the C1 magnitude the model trains on)."""
+    b = el.bbox
+    if b.area <= 0:
+        return 0.0
+    inter = b.intersect(slide)
+    return 1 - (inter.area / b.area if inter else 0.0)
+
+
+def c2_coverage(upper, lower) -> float | None:
+    """Share of the lower element's estimated content box covered by the upper's box, or None."""
+    lc = content_box(lower)
+    if lc is None or lc[0].area <= 0:
+        return None
+    inter = upper.bbox.intersect(lc[0])
+    return inter.area / lc[0].area if inter else None
+
+
 def raw_candidates(deck) -> list[Candidate]:
     slide = deck.slide_rect
     out: list[Candidate] = []
@@ -40,22 +58,15 @@ def raw_candidates(deck) -> list[Candidate]:
             b = e.bbox
             if b.area <= 0 or is_empty_text(e):
                 continue
-            inter = b.intersect(slide)
-            outside = 1 - (inter.area / b.area if inter else 0.0)
+            outside = c1_outside(e, slide)
             if outside > 0.02:
                 out.append(Candidate("C1", s.index, (e.id,), outside))
         for a, b in combinations(s.elements, 2):
             lower, upper = (a, b) if a.z < b.z else (b, a)
             if not (upper.kind == "picture" or upper.filled):
                 continue
-            lc = content_box(lower)
-            if lc is None or lc[0].area <= 0:
-                continue
-            inter = upper.bbox.intersect(lc[0])
-            if inter is None:
-                continue
-            cov = inter.area / lc[0].area
-            if cov >= 0.05:
+            cov = c2_coverage(upper, lower)
+            if cov is not None and cov >= 0.05:
                 out.append(Candidate("C2", s.index, (upper.id, lower.id), cov))
     return out
 

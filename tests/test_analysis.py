@@ -9,7 +9,8 @@ def test_analyse_demo_without_libreoffice(monkeypatch, tmp_path, demo_deck):
     msgs = []
     a = analyse(demo_deck[0], tmp_path, msgs.append)
     assert a.render.status == "skipped"
-    assert a.skipped_note == "Note: text overflow and contrast checks were skipped because LibreOffice is not installed."
+    assert a.skipped_note == ("Note: text overflow, contrast and text size checks were skipped "
+                             "because LibreOffice is not installed.")
     assert msgs[:2] == ["Reading slides…", "Rendering slides…"] and msgs[-1] == "Checking slide 8 of 8…"
     assert {f.check_id for f in a.report.visible} == {"C1", "C2", "C4", "C5", "C8"}
     assert {f.check_id for f in a.report.minor} == {"C9", "C10"}

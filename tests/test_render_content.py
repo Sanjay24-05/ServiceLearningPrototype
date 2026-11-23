@@ -1,0 +1,140 @@
+import pytest
+
+from slideproof.checks.content import content_box
+from slideproof.checks.offslide import check_offslide
+from slideproof.checks.overlap import check_overlap
+from slideproof.loader import load_deck
+from slideproof.units import inches
+
+
+def _with_spans(deck, render, per_element):
+    from slideproof.render.pdf import RenderedSpan
+    from slideproof.units import Rect
+    el = {e.name: e for e in deck.slides[0].elements}
+    render.linked = {el[n].id: [RenderedSpan("t", Rect(*(inches(v) for v in b)), "A", 18, (0, 0, 0))
+                                for b in boxes] for n, boxes in per_element.items()}
+    return render
+
+
+def _wide_box_deck(tiny_deck):
+    # box x 11..14 on a 13.333 in slide: sticks out ~0.667 in (22%)
+    return load_deck(tiny_deck([
+        {"kind": "textbox", "name": "wide", "x": 11, "y": 1, "w": 3, "h": 1, "text": "Hi"}]))
+
+
+def test_c1_box_sticks_out_but_text_inside_not_flagged(tiny_deck, make_render):
+    deck = _wide_box_deck(tiny_deck)
+    render = _with_spans(deck, make_render([[]]), {"wide": [(11.1, 1.1, 0.5, 0.3)]})
+    assert check_offslide(deck, render) == []
+    assert [f.check_id for f in check_offslide(deck, None)] == ["C1"]  # estimate path unchanged
+
+
+def test_c1_text_cut_still_flagged(tiny_deck, make_render):
+    deck = _wide_box_deck(tiny_deck)
+    render = _with_spans(deck, make_render([[]]), {"wide": [(12.9, 1.1, 1.0, 0.3)]})
+    (f,) = check_offslide(deck, render)
+    assert f.check_id == "C1" and f.severity == "visible"
+    # edges describe the text: about 0.567 of its 1.0 in width past the right edge
+    assert f.measurements["edges"]["right"] == pytest.approx(0.567, abs=0.05)
+    assert f.fix is not None and f.fix.element_id == deck.slides[0].elements[0].id
+
+
+@pytest.mark.soffice
+def test_demo_slide2_still_flagged_with_render(demo_deck, tmp_path):
+    from slideproof.analysis import analyse
+    a = analyse(demo_deck[0], tmp_path)
+    assert a.render.status == "ok"
+    names = {e.id: e.name for s in a.deck.slides for e in s.elements}
+    c1 = [f for f in a.findings if f.check_id == "C1" and f.slide_index == 2]
+    assert [names[f.element_ids[0]] for f in c1] == ["agenda-box"]
+
+
+def test_judge_uses_estimate_magnitude(tiny_deck, make_render, monkeypatch):
+    from slideproof import intent
+    deck = load_deck(tiny_deck([
+        {"kind": "textbox", "name": "low", "x": 1, "y": 1, "w": 6, "h": 3, "text": "Some words"},
+        {"kind": "picture", "name": "up", "x": 1, "y": 1, "w": 6, "h": 0.5}]))
+    if not intent.available():
+        pytest.skip("intent model unavailable")
+    render = _with_spans(deck, make_render([[]]), {"low": [(1.1, 1.3, 5.0, 0.3)]})
+    (f,) = check_overlap(deck, render)
+    low = next(e for e in deck.slides[0].elements if e.name == "low")
+    up = next(e for e in deck.slides[0].elements if e.name == "up")
+    rect, _ = content_box(low)
+    expected = up.bbox.intersect(rect).area / rect.area
+    assert f.magnitude != pytest.approx(expected, abs=0.01)  # rendered coverage differs
+    seen = []
+    real = intent.features_for
+
+    def spy(check_id, ids, magnitude, d):
+        seen.append(magnitude)
+        return real(check_id, ids, magnitude, d)
+    monkeypatch.setattr(intent, "features_for", spy)
+    intent.judge([f], deck)
+    assert seen == [pytest.approx(expected)]
+
+
+def test_c1_slight_text_cut_is_visible(tiny_deck, make_render):
+    deck = _wide_box_deck(tiny_deck)
+    # span union 1.0 in wide, ~0.05 in past the right edge (13.333): ~5% outside
+    render = _with_spans(deck, make_render([[]]), {"wide": [(12.333, 1.1, 1.05, 0.3)]})
+    (f,) = check_offslide(deck, render)
+    assert 0.02 < f.magnitude < 0.10 and f.severity == "visible"
+
+
+def test_c1_text_entirely_off_slide_in_box_on_slide(tiny_deck, make_render):
+    deck = _wide_box_deck(tiny_deck)
+    render = _with_spans(deck, make_render([[]]), {"wide": [(13.6, 1.1, 0.4, 0.3)]})
+    (f,) = check_offslide(deck, render)
+    assert f.magnitude == pytest.approx(1.0) and f.severity == "visible"
+
+
+def test_intent_helpers_match_raw_candidates(demo_deck):
+    from slideproof.intent.features import c1_outside, c2_coverage, raw_candidates
+    deck = load_deck(demo_deck[0])
+    n = 0
+    for c in raw_candidates(deck):
+        if c.check_id == "C1":
+            m = c1_outside(deck.element(c.element_ids[0]), deck.slide_rect)
+        else:
+            m = c2_coverage(*(deck.element(i) for i in c.element_ids))
+        assert m == pytest.approx(c.magnitude)
+        n += 1
+    assert n > 0
+
+
+def _autofit_deck(tmp_path, auto_size):
+    """A text box (1-6 in across, 1-2 in down) with a picture just below it (2.05-4 in)."""
+    from io import BytesIO
+    from PIL import Image
+    from pptx import Presentation
+    from pptx.util import Inches
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    tb = s.shapes.add_textbox(Inches(1), Inches(1), Inches(5), Inches(1))
+    tb.name = "words"
+    tb.text_frame.word_wrap = True
+    tb.text_frame.text = "A long title that wraps"
+    tb.text_frame.auto_size = auto_size
+    buf = BytesIO()
+    Image.new("RGB", (100, 100), (128, 128, 128)).save(buf, "PNG")
+    buf.seek(0)
+    s.shapes.add_picture(buf, Inches(1), Inches(2.05), Inches(5), Inches(1.95)).name = "pic"
+    p = tmp_path / f"autofit-{auto_size}.pptx"
+    prs.save(p)
+    return load_deck(p)
+
+
+@pytest.mark.parametrize("auto_size, flagged", [("TEXT_TO_FIT_SHAPE", False), ("NONE", True)])
+def test_shrink_autofit_text_is_kept_inside_its_box(tmp_path, make_render, auto_size, flagged):
+    # LibreOffice may not shrink a "shrink text on overflow" box, so its rendered second line
+    # runs into the picture below; PowerPoint shrinks the text into the box, so nothing is covered.
+    from pptx.enum.text import MSO_AUTO_SIZE
+    deck = _autofit_deck(tmp_path, getattr(MSO_AUTO_SIZE, auto_size))
+    words = next(e for e in deck.slides[0].elements if e.name == "words")
+    render = _with_spans(deck, make_render([[]]),
+                         {"words": [(1.5, 1.05, 4.0, 0.6), (2.0, 1.65, 3.0, 0.6)]})
+    rect, _ = content_box(words, render.linked[words.id])
+    assert (rect.bottom <= words.bbox.bottom) == (not flagged)
+    assert bool(check_overlap(deck, render)) == flagged

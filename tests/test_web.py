@@ -114,10 +114,11 @@ def test_report_states_what_is_checked(client, demo_deck):
     run_id = upload(client, "demo.pptx", demo_deck[0].read_bytes())
     wait_done(client, run_id)
     rep = client.get(f"/runs/{run_id}/report").text
-    assert ("This version checks seven things: objects that stick out past the slide edge, "
+    assert ("This version checks eleven things: objects that stick out past the slide edge, "
             "stretched pictures, overlapping objects, low-resolution pictures, titles out of line "
-            "with the rest, stray fonts, and empty or stray objects. Text overflow, contrast and "
-            "text size are not checked yet.") in rep
+            "with the rest, stray fonts, empty or stray objects, text that overflows its box, "
+            "small text, low-contrast text, and content hidden behind other objects. Text inside "
+            "charts and diagrams is not checked yet.") in rep
     assert rep.index("This version checks") < rep.index("<form")
 
 
@@ -361,3 +362,16 @@ def test_about_and_report_without_model(client, tmp_path, monkeypatch):
         assert "How fixes work" in html
     finally:
         intent._cache.clear()
+
+
+def test_result_has_no_compare_without_render(client, demo_deck):
+    run_id, _ = full_flow(client, demo_deck, "demo.pptx")
+    res = client.get(f"/runs/{run_id}/result").text
+    assert "Changes made" in res
+    assert "Show the changed slides" not in res and "<details" not in res
+    assert client.get(f"/runs/{run_id}/compare/4.png").status_code == 404
+
+
+def test_compare_image_404_for_unknown_run_or_bad_number(client):
+    assert client.get("/runs/nope/compare/1.png").status_code == 404
+    assert client.get("/runs/nope/compare/x.png").status_code == 404

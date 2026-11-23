@@ -49,6 +49,17 @@ def _c2(f, c: Ctx):
             f"{tail} Confidence: {f.confidence}.")
 
 
+def _c3(f, c: Ctx):
+    edge = f.measurements["edge"]
+    dim = "height" if edge == "bottom" else "width"
+    amount = f.measurements["amount"]
+    by = (f"more than the box's whole {dim}" if amount >= 1
+          else f"{portion_phrase(amount)} of the box's {dim}")
+    return (f"{c.label} has more text than fits in its box",
+            f"{cap(c.label)}, {c.loc}, has more text than fits: it runs past the {edge} of its box "
+            f"by {by}, so it may spill onto other content or be cut off. Confidence: likely.")
+
+
 def _c4(f, c: Ctx):
     ratio = f.measurements["ratio"]
     wide = f.measurements["direction"] == "wide"
@@ -95,6 +106,22 @@ def _c10(f, c: Ctx):
             f"when presenting. Confidence: definite.")
 
 
+def _c6(f, c: Ctx):
+    hard = "is hard" if f.severity == "visible" else "may be hard"
+    return (f"{c.label} has small text",
+            f"{cap(c.label)}, {c.loc}, has text as small as {f.measurements['size']} point, "
+            f"which {hard} to read when projected. Use at least 18 point for body text. "
+            f"Confidence: definite.")
+
+
+def _c7(f, c: Ctx):
+    m = f.measurements
+    return (f"{c.label} has low contrast",
+            f"{cap(c.label)}, {c.loc}, has text that is too close in colour to its background "
+            f"(contrast {m['ratio']:.1f}:1, at least {m['need']:g}:1 is needed), so it will be hard to "
+            f"read, especially on a projector. Confidence: {f.confidence}.")
+
+
 def _c8(f, c: Ctx):
     dx, dy = f.measurements["dx"], f.measurements["dy"]
     others = f.measurements["others"]
@@ -117,8 +144,15 @@ def _c9(f, c: Ctx):
             f"{main}, so this text will look out of place. Confidence: definite.")
 
 
-COPY: dict[str, Callable] = {"C1": _c1, "C2": _c2, "C4": _c4, "C5": _c5, "C8": _c8, "C9": _c9,
-                             "C10": _c10}
+def _c11(f, c: Ctx):
+    lower, lower_loc = c.other(f.element_ids[1])
+    return (f"{lower} is hidden behind {c.label}",
+            f"{cap(lower)}, {lower_loc}, is almost completely covered by {c.label}, "
+            f"so your audience will not see it. Confidence: {f.confidence}.")
+
+
+COPY: dict[str, Callable] = {"C1": _c1, "C2": _c2, "C3": _c3, "C4": _c4, "C5": _c5, "C6": _c6, "C7": _c7,
+                             "C8": _c8, "C9": _c9, "C10": _c10, "C11": _c11}
 
 # (headline, full) for findings grouped by the prioritiser; {c} = count, {conf} = confidence.
 GROUPED: dict[str, tuple[str, str]] = {
@@ -126,10 +160,16 @@ GROUPED: dict[str, tuple[str, str]] = {
            "{c} objects on this slide stick out past the slide edges. Confidence: definite."),
     "C2": ("{c} objects overlap each other",
            "{c} objects on this slide overlap each other. Confidence: {conf}."),
+    "C3": ("{c} text boxes have more text than fits",
+           "{c} text boxes on this slide have more text than fits. Confidence: likely."),
     "C4": ("{c} pictures are stretched out of shape",
            "{c} pictures on this slide are stretched out of shape. Confidence: definite."),
     "C5": ("{c} pictures are low resolution",
            "{c} pictures on this slide are low resolution. Confidence: definite."),
+    "C6": ("{c} text boxes have small text",
+           "{c} text boxes on this slide have small text. Confidence: definite."),
+    "C7": ("{c} text boxes have low contrast",
+           "{c} text boxes on this slide have low contrast. Confidence: {conf}."),
     "C8": ("{c} titles sit out of line with the rest",
            "{c} titles on this slide sit out of line with the rest. Confidence: definite."),
     "C9": ("{c} text boxes use a font used almost nowhere else",
@@ -137,6 +177,8 @@ GROUPED: dict[str, tuple[str, str]] = {
            "so they will look out of place. Confidence: definite."),
     "C10": ("{c} empty or stray objects",
             "{c} empty or stray objects are on this slide. Confidence: definite."),
+    "C11": ("{c} objects are hidden behind others",
+            "{c} objects on this slide are hidden behind others. Confidence: {conf}."),
 }
 
 FALLBACK = ("a layout problem was found",

@@ -166,3 +166,52 @@ def test_probably_intentional_report_has_no_serious_axe_violations(live_server, 
     reach_report(page, live_server, _logo_deck(tmp_path / "logo.pptx"))
     assert page.locator("h2", has_text="Probably intentional (6)").count() == 1
     assert_no_serious(page, f"intentional report ({scheme})")
+
+
+@pytest.fixture
+def live_server_render(tmp_path):
+    """A live server that uses the real LibreOffice, for the before/after view."""
+    import uvicorn
+    port = free_browser_port()
+    app = create_app(tmp_path / "runs")
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port,
+                                           log_level="warning"))
+    t = threading.Thread(target=server.run, daemon=True)
+    try:
+        t.start()
+        end = time.time() + 20
+        while not server.started and time.time() < end:
+            time.sleep(0.05)
+        assert server.started, "uvicorn did not start"
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.should_exit = True
+        t.join(timeout=15)
+
+
+@pytest.mark.soffice
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_result_with_before_after_has_no_serious_axe_violations(
+        live_server_render, demo_deck, page, scheme):
+    page.set_default_timeout(600_000)
+    page.emulate_media(color_scheme=scheme)
+    page.goto(live_server_render + "/")
+    page.set_input_files("#file", str(demo_deck[0]))
+    page.get_by_role("button", name="Check slides").click()
+    page.wait_for_url("**/report", timeout=600_000)
+    page.get_by_role("button", name="Create corrected copy").click()
+    page.wait_for_url("**/result", timeout=600_000)
+    summary = page.locator("details > summary", has_text="Show the changed slides")
+    assert summary.count() == 1
+    assert_no_serious(page, f"result with before/after, collapsed ({scheme})")
+    # Keyboard: Tab to the summary and open it with Enter.
+    summary.focus()
+    page.keyboard.press("Enter")
+    assert page.evaluate("document.querySelector('details').open")
+    imgs = page.locator("details img")
+    assert imgs.count() >= 1
+    for i in range(imgs.count()):
+        alt = imgs.nth(i).get_attribute("alt")
+        assert alt and " before and after: " in alt
+        assert imgs.nth(i).evaluate("el => el.complete && el.naturalWidth > 0")
+    assert_no_serious(page, f"result with before/after, open ({scheme})")

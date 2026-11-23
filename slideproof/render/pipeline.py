@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
 from pptx import Presentation
 
-from .pdf import RenderedSlide, read_pdf
+from .pdf import RenderedSlide, RenderedSpan, read_pdf
 from .soffice import RenderError, convert_to_pdf, find_soffice
 
 
@@ -17,6 +17,7 @@ class RenderResult:
     status: Literal["ok", "skipped", "failed"]
     reason: str | None
     slides: list[RenderedSlide | None]
+    linked: dict[str, list[RenderedSpan]] = field(default_factory=dict)
 
 
 def slide_size(pptx: Path) -> tuple[int, int]:

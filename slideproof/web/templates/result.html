@@ -33,6 +33,12 @@ document.getElementById("top").focus();
 <ul>
 {% for c in changes %}<li>{{ c }}</li>
 {% endfor %}</ul>
+{% if compare %}
+<details><summary>Show the changed slides</summary>
+<p>Each picture shows the original slide on the left and the corrected slide on the right.</p>
+{% for src, alt in compare %}<p><img src="{{ src }}" alt="{{ alt }}"></p>
+{% endfor %}</details>
+{% endif %}
 {% endif %}
 {% if ex.output %}
 <p><a href="/runs/{{ run.id }}/download">Download {{ stem }} (checked).pptx</a></p>

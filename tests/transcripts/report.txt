@@ -1,7 +1,7 @@
 focus: heading Report for demo_deck.pptx
 heading level 1: Report for demo_deck.pptx
-text: 8 slides checked. 5 visible problems on 4 slides, 2 minor. This version checks seven things: objects that stick out past the slide edge, stretched pictures, overlapping objects, low-resolution pictures, titles out of line with the rest, stray fonts, and empty or stray objects. Text overflow, contrast and text size are not checked yet. A small on-device model sorts findings that look like deliberate design into "Probably intentional".
-text: Note: text overflow and contrast checks were skipped because LibreOffice is not installed.
+text: 8 slides checked. 5 visible problems on 4 slides, 2 minor. This version checks eleven things: objects that stick out past the slide edge, stretched pictures, overlapping objects, low-resolution pictures, titles out of line with the rest, stray fonts, empty or stray objects, text that overflows its box, small text, low-contrast text, and content hidden behind other objects. Text inside charts and diagrams is not checked yet. A small on-device model sorts findings that look like deliberate design into "Probably intentional".
+text: Note: text overflow, contrast and text size checks were skipped because LibreOffice is not installed.
 heading level 2: Visible problems (5)
 heading level 3: Slide 4, "Our team": picture "Team photo" is stretched wider than its natural shape
 text: Picture "Team photo", in the centre, is shown 1.6 times as wide as its natural shape, so it looks distorted. Confidence: definite.

@@ -24,6 +24,8 @@ class TextStyle:
     align: str
     anchor: str
     insets: tuple[int, int, int, int]
+    autofit: str | None = None  # "none" | "shrink" | "grow"; None when nothing in the chain says
+    wrap: bool = True           # False when the text does not wrap (bodyPr wrap="none")
 
 
 def _chain(shape) -> list:
@@ -116,6 +118,18 @@ def _body_prs(chain):
     return out
 
 
+_AUTOFIT = {"a:noAutofit": "none", "a:normAutofit": "shrink", "a:spAutoFit": "grow"}
+
+
+def _autofit(body_prs) -> str | None:
+    """The first autofit setting along the slide -> layout -> master chain."""
+    for bp in body_prs:
+        for tag, value in _AUTOFIT.items():
+            if bp.find(qn(tag)) is not None:
+                return value
+    return None
+
+
 def _font_scale(body_prs) -> float:
     for bp in body_prs[:1]:  # shrink-on-overflow is stored on the slide's own shape
         fit = bp.find(qn("a:normAutofit"))
@@ -140,4 +154,5 @@ def resolve(shape, ph_type: str | None) -> TextStyle:
     insets = tuple(int(_first(bp.get(a) for bp in bps) or d)
                    for a, d in zip(_INSET_ATTRS, DEFAULT_INSETS))
     align = _ALIGN.get(_first(aligns) or "l", "left")
-    return TextStyle(paragraphs, align, anchor, insets)
+    wrap = _first(bp.get("wrap") for bp in bps) != "none"
+    return TextStyle(paragraphs, align, anchor, insets, _autofit(bps), wrap)

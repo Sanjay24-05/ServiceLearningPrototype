@@ -12,6 +12,7 @@ from slideproof.loader import load_deck
 from slideproof.model import DeckModel
 from slideproof.prioritise import Report, prioritise
 from slideproof.render import RenderResult, render_deck
+from slideproof.render.link import link_spans
 
 
 @dataclass
@@ -30,6 +31,8 @@ def analyse(pptx: Path, run_dir: Path,
     deck = load_deck(pptx)
     progress("Rendering slides…")
     render = render_deck(pptx, run_dir, [s.hidden for s in deck.slides])
+    if render.status == "ok":
+        render.linked = link_spans(deck, render)
     n = len(deck.slides)
     for i in range(1, n + 1):
         progress(f"Checking slide {i} of {n}…")
@@ -38,6 +41,6 @@ def analyse(pptx: Path, run_dir: Path,
     report = prioritise(findings, n, intent.threshold())
     note = None
     if render.status != "ok":
-        note = ("Note: text overflow and contrast checks were skipped because "
+        note = ("Note: text overflow, contrast and text size checks were skipped because "
                 f"{render.reason}.")
     return Analysis(deck, render, findings, report, note, intent_note)

@@ -7,7 +7,8 @@ from dataclasses import replace
 from pathlib import Path
 
 from slideproof.findings import Finding
-from slideproof.intent.features import _TEXT_KINDS, FEATURES, _has_text, features_for
+from slideproof.intent.features import (_TEXT_KINDS, FEATURES, _has_text, c1_outside,
+                                      c2_coverage, features_for)
 
 MODEL_DIR = Path(__file__).resolve().parent
 UNAVAILABLE_NOTE = 'The "probably intentional" judgement is unavailable in this setup.'
@@ -90,6 +91,16 @@ def _judgeable(f, deck) -> bool:
     return False
 
 
+def _estimate_magnitude(f, deck) -> float:
+    """The magnitude as the model was trained on it: estimate-based, never from rendered text.
+    Shares its formulas with raw_candidates. (Only non-text C1 is judged, so the C1 branch is a guard.)"""
+    if f.check_id == "C1":
+        return c1_outside(deck.element(f.element_ids[0]), deck.slide_rect)
+    upper, lower = (deck.element(i) for i in f.element_ids[:2])
+    cov = c2_coverage(upper, lower)
+    return f.magnitude if cov is None else cov
+
+
 def judge(findings: list[Finding], deck) -> tuple[list[Finding], str | None]:
     bundle = _load()
     if bundle is None:
@@ -102,7 +113,7 @@ def judge(findings: list[Finding], deck) -> tuple[list[Finding], str | None]:
     if not todo:
         return list(findings), None
     try:
-        vecs = {id(f): features_for(f.check_id, f.element_ids, f.magnitude, deck) for f in todo}
+        vecs = {id(f): features_for(f.check_id, f.element_ids, _estimate_magnitude(f, deck), deck) for f in todo}
         probs = model.predict_proba([vecs[id(f)] for f in todo])[:, 1]
         judged = {id(f): (float(p), vecs[id(f)]) for f, p in zip(todo, probs)}
     except Exception:  # a broken model must never break the report
