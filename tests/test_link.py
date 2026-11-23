@@ -73,3 +73,32 @@ def test_demo_deck_agenda_spans_link(demo_deck, tmp_path):
     a = analyse(demo_deck[0], tmp_path)
     ag = next(e for s in a.deck.slides for e in s.elements if e.name == "agenda-box")
     assert len(a.render.linked.get(ag.id, [])) >= 4
+
+
+def test_overflow_span_links_to_own_box(tiny_deck, make_render):
+    deck = _two_boxes(tiny_deck, "Totals", "Totals")  # a at (1,1) 3x1; b at (6,4)
+    # 0.4 in below box a's bottom (y=2)
+    render = make_render([[("Totals", (inches(1.1), inches(2.4), inches(1), inches(0.3)))]])
+    linked = link_spans(deck, render)
+    a, b = deck.slides[0].elements
+    assert a.id in linked and b.id not in linked
+
+
+def test_far_span_stays_unlinked(tiny_deck, make_render):
+    deck = _two_boxes(tiny_deck)
+    render = make_render([[("Alpha", (inches(1.1), inches(5.5), inches(1), inches(0.3)))]])
+    assert link_spans(deck, render) == {}
+
+
+def test_one_char_span_outside_boxes_unlinked(tiny_deck, make_render):
+    deck = _two_boxes(tiny_deck, "A1 a", "B a")
+    render = make_render([[("a", (inches(1.1), inches(2.3), inches(0.1), inches(0.3)))]])
+    assert link_spans(deck, render) == {}
+
+
+def test_repeated_short_word_links_by_containment(tiny_deck, make_render):
+    deck = _two_boxes(tiny_deck, "to do", "to do")
+    render = make_render([[("to", (inches(6.1), inches(4.1), inches(0.3), inches(0.3)))]])
+    linked = link_spans(deck, render)
+    a, b = deck.slides[0].elements
+    assert b.id in linked and a.id not in linked
