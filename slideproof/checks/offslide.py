@@ -19,6 +19,7 @@ def check_offslide(deck, render=None) -> list[Finding]:
             if b.area <= 0:
                 continue
             spans = render.linked.get(e.id) if render else None
+            text_cut = False
             if spans and e.kind in _TEXT_KINDS:
                 # Rendered text: judge where the text actually is, not the box around it.
                 b = Rect(min(x.bbox.x for x in spans), min(x.bbox.y for x in spans),
@@ -26,17 +27,22 @@ def check_offslide(deck, render=None) -> list[Finding]:
                          max(x.bbox.bottom for x in spans) - min(x.bbox.y for x in spans))
                 if b.area <= 0:
                     b = e.bbox
+                else:
+                    text_cut = True  # provisional: confirmed below once "outside" is known
             inter = b.intersect(slide)
             visible = inter.area / b.area if inter else 0.0
             outside = 1 - visible
-            if outside <= 0.02 or inter is None:
+            if inter is None and text_cut and e.bbox.intersect(slide) is not None:
+                outside = 1.0  # box on the slide, but all its rendered text is off it
+            elif outside <= 0.02 or inter is None:
                 continue
+            text_cut = text_cut and outside > 0.02
             if (e.kind == "picture" and inter.area >= 0.9 * slide.area and e.z == lowest_z):
                 continue
             if is_empty_text(e):
                 continue  # empty text boxes belong to C10 (stray objects)
             has_text = bool(e.text and e.text.strip())
-            severity = "visible" if outside >= 0.10 else "minor"
+            severity = "visible" if outside >= 0.10 or text_cut else "minor"
             if not has_text and e.kind in ("picture", "shape"):
                 # Deliberate bleed: backgrounds, banners, full-width strips.
                 if b.w >= 0.9 * slide.w or b.h >= 0.9 * slide.h:

@@ -72,3 +72,32 @@ def test_judge_uses_estimate_magnitude(tiny_deck, make_render, monkeypatch):
     monkeypatch.setattr(intent, "features_for", spy)
     intent.judge([f], deck)
     assert seen == [pytest.approx(expected)]
+
+
+def test_c1_slight_text_cut_is_visible(tiny_deck, make_render):
+    deck = _wide_box_deck(tiny_deck)
+    # span union 1.0 in wide, ~0.05 in past the right edge (13.333): ~5% outside
+    render = _with_spans(deck, make_render([[]]), {"wide": [(12.333, 1.1, 1.05, 0.3)]})
+    (f,) = check_offslide(deck, render)
+    assert 0.02 < f.magnitude < 0.10 and f.severity == "visible"
+
+
+def test_c1_text_entirely_off_slide_in_box_on_slide(tiny_deck, make_render):
+    deck = _wide_box_deck(tiny_deck)
+    render = _with_spans(deck, make_render([[]]), {"wide": [(13.6, 1.1, 0.4, 0.3)]})
+    (f,) = check_offslide(deck, render)
+    assert f.magnitude == pytest.approx(1.0) and f.severity == "visible"
+
+
+def test_intent_helpers_match_raw_candidates(demo_deck):
+    from slideproof.intent.features import c1_outside, c2_coverage, raw_candidates
+    deck = load_deck(demo_deck[0])
+    n = 0
+    for c in raw_candidates(deck):
+        if c.check_id == "C1":
+            m = c1_outside(deck.element(c.element_ids[0]), deck.slide_rect)
+        else:
+            m = c2_coverage(*(deck.element(i) for i in c.element_ids))
+        assert m == pytest.approx(c.magnitude)
+        n += 1
+    assert n > 0

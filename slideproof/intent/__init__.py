@@ -6,9 +6,9 @@ import warnings
 from dataclasses import replace
 from pathlib import Path
 
-from slideproof.checks.content import content_box
 from slideproof.findings import Finding
-from slideproof.intent.features import _TEXT_KINDS, FEATURES, _has_text, features_for
+from slideproof.intent.features import (_TEXT_KINDS, FEATURES, _has_text, c1_outside,
+                                      c2_coverage, features_for)
 
 MODEL_DIR = Path(__file__).resolve().parent
 UNAVAILABLE_NOTE = 'The "probably intentional" judgement is unavailable in this setup.'
@@ -92,16 +92,13 @@ def _judgeable(f, deck) -> bool:
 
 
 def _estimate_magnitude(f, deck) -> float:
-    """The magnitude as the model was trained on it: estimate-based, never from rendered text
-    (raw_candidates in intent/features.py is the definition; keep the two in step)."""
+    """The magnitude as the model was trained on it: estimate-based, never from rendered text.
+    Shares its formulas with raw_candidates. (Only non-text C1 is judged, so the C1 branch is a guard.)"""
     if f.check_id == "C1":
-        b = deck.element(f.element_ids[0]).bbox
-        inter = b.intersect(deck.slide_rect)
-        return 1 - (inter.area / b.area if inter and b.area > 0 else 0.0)
+        return c1_outside(deck.element(f.element_ids[0]), deck.slide_rect)
     upper, lower = (deck.element(i) for i in f.element_ids[:2])
-    box = content_box(lower)
-    inter = upper.bbox.intersect(box[0]) if box else None
-    return inter.area / box[0].area if inter and box[0].area > 0 else f.magnitude
+    cov = c2_coverage(upper, lower)
+    return f.magnitude if cov is None else cov
 
 
 def judge(findings: list[Finding], deck) -> tuple[list[Finding], str | None]:
