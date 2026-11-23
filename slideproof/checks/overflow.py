@@ -15,11 +15,14 @@ def check_overflow(deck, render=None) -> list[Finding]:
             spans = render.linked.get(e.id)
             if not spans or e.rotation % 360:
                 continue  # rotated frames are not axis-aligned with the rendered spans
+            if e.autofit in ("shrink", "grow"):
+                continue  # PowerPoint shrinks the text or grows the box; LibreOffice does not
             f = e.frame
             if f.w <= 0 or f.h <= 0:
                 continue
             below = max(x.bbox.bottom for x in spans) - f.bottom
-            right = max(x.bbox.right for x in spans) - f.right
+            # Unwrapped text legitimately runs sideways; only its bottom counts.
+            right = max(x.bbox.right for x in spans) - f.right if e.wrap else 0
             if max(below, right) <= _TOLERANCE:
                 continue
             if below >= right:

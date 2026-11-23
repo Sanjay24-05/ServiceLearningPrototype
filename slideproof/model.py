@@ -53,6 +53,8 @@ class Element:
     align: str = "left"  # horizontal alignment of the text: "left" | "center" | "right"
     animated: bool = False  # the slide's animation list targets this shape
     insets: tuple[int, int, int, int] = (91440, 45720, 91440, 45720)  # l, t, r, b in EMU
+    autofit: str | None = None  # effective autofit: "none" | "shrink" | "grow" | None (unset)
+    wrap: bool = True  # text wraps inside the box (bodyPr wrap is not "none")
 
 
 @dataclass

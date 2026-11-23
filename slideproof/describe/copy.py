@@ -52,10 +52,12 @@ def _c2(f, c: Ctx):
 def _c3(f, c: Ctx):
     edge = f.measurements["edge"]
     dim = "height" if edge == "bottom" else "width"
+    amount = f.measurements["amount"]
+    by = (f"more than the box's whole {dim}" if amount >= 1
+          else f"{portion_phrase(amount)} of the box's {dim}")
     return (f"{c.label} has more text than fits in its box",
             f"{cap(c.label)}, {c.loc}, has more text than fits: it runs past the {edge} of its box "
-            f"by {portion_phrase(f.measurements['amount'])} of the box's {dim}, so it may spill "
-            f"onto other content or be cut off. Confidence: likely.")
+            f"by {by}, so it may spill onto other content or be cut off. Confidence: likely.")
 
 
 def _c4(f, c: Ctx):

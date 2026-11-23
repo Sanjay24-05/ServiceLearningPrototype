@@ -123,3 +123,11 @@ def test_grouped_copy_c3_c6():
                              "Confidence: likely.")
     assert GROUPED["C6"] == ("{c} text boxes have small text",
                              "{c} text boxes on this slide have small text. Confidence: definite.")
+
+
+@pytest.mark.parametrize("size,severity,spoken", [(11.5, "visible", 11), (17.6, "minor", 17)])
+def test_size_is_floored_to_match_band(tiny_deck, make_render, size, severity, spoken):
+    deck = _three_boxes(tiny_deck)
+    render = _with_sizes(deck, make_render([[]]), {"tiny": [size]})
+    (f,) = check_textsize(deck, render)
+    assert (f.severity, f.measurements["size"]) == (severity, spoken)

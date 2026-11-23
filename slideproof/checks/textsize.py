@@ -1,6 +1,8 @@
 """C6: rendered text that is too small to read when projected (spec §7.1)."""
 from __future__ import annotations
 
+from math import floor
+
 from slideproof.findings import Finding
 
 _EXEMPT = ("FOOTER", "DATE", "SLIDE_NUMBER")  # small on purpose (Review Focus 3)
@@ -26,5 +28,5 @@ def check_textsize(deck, render=None) -> list[Finding]:
             else:
                 continue
             out.append(Finding("C6", s.index, s.slide_id, (e.id,), severity, "definite",
-                               (_MINOR_PT - size) / _MINOR_PT, {"size": round(size)}))
+                               (_MINOR_PT - size) / _MINOR_PT, {"size": floor(size)}))
     return out

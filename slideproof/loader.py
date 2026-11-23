@@ -140,6 +140,7 @@ def _walk(shapes, transforms, group_id, sm: SlideModel, counter) -> None:
         runs: list[RunStyle] = []
         paragraphs: list[tuple[int, float | None]] = []
         anchor, insets, align = "top", _DEFAULT_INSETS, "left"
+        autofit, wrap = None, True
         if getattr(shape, "has_text_frame", False):
             tf = shape.text_frame
             text = tf.text
@@ -148,6 +149,7 @@ def _walk(shapes, transforms, group_id, sm: SlideModel, counter) -> None:
                 style = text_style.resolve(shape, ph_type)
                 paragraphs, anchor, insets, align = (style.paragraphs, style.anchor,
                                                      style.insets, style.align)
+                autofit, wrap = style.autofit, style.wrap
             except Exception:
                 paragraphs = [(len(p.text), None) for p in tf.paragraphs]
         if kind == "title" and sm.title_text is None:
@@ -159,7 +161,7 @@ def _walk(shapes, transforms, group_id, sm: SlideModel, counter) -> None:
             filled=kind == "picture" or _is_filled(shape), text=text, runs=runs,
             image=image, placeholder_type=ph_type, group_id=group_id,
             fixable=fixable, outlined=_is_outlined(shape), paragraphs=paragraphs,
-            anchor=anchor, insets=insets, align=align))
+            anchor=anchor, insets=insets, align=align, autofit=autofit, wrap=wrap))
         counter[0] += 1
 
 
