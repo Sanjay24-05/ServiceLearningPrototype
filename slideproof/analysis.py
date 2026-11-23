@@ -41,6 +41,6 @@ def analyse(pptx: Path, run_dir: Path,
     report = prioritise(findings, n, intent.threshold())
     note = None
     if render.status != "ok":
-        note = ("Note: text overflow and contrast checks were skipped because "
+        note = ("Note: text overflow, contrast and text size checks were skipped because "
                 f"{render.reason}.")
     return Analysis(deck, render, findings, report, note, intent_note)

@@ -13,6 +13,7 @@ from slideproof.checks.overlap import check_overlap
 from slideproof.describe import describe
 from slideproof.describe.copy import GROUPED
 from slideproof.loader import load_deck
+from slideproof.render.link import link_spans
 from slideproof.units import inches
 
 
@@ -43,9 +44,8 @@ def test_partial_cover_stays_c2(tiny_deck):
         {"kind": "textbox", "name": "notes", "x": 1, "y": 1, "w": 5, "h": 1,
          "text": "Some words that run along the line"},
         {"kind": "picture", "name": "photo", "x": 0.5, "y": 0.5, "w": 1.9, "h": 2}]))
-    render = None
-    assert check_hidden(d, render) == []
-    c2 = check_overlap(d, render)
+    assert check_hidden(d, None) == []
+    c2 = check_overlap(d, None)
     assert len(c2) == 1 and 0.05 <= c2[0].measurements["coverage"] < 0.95
 
 
@@ -56,7 +56,6 @@ def test_rendered_spans_decide_the_content_box(tiny_deck, make_render):
         {"kind": "picture", "name": "photo", "x": 0.5, "y": 0.5, "w": 6, "h": 1.2}]))
     assert len(check_hidden(d, None)) == 1
     render = make_render([[("Hidden words", (inches(1.2), inches(3), inches(2), inches(0.4)))]])
-    from slideproof.render.link import link_spans
     render.linked = link_spans(d, render)
     assert render.linked
     assert check_hidden(d, render) == []
@@ -142,3 +141,39 @@ def test_copy_c11(tiny_deck):
                          "picture 1, so your audience will not see it. Confidence: likely.")
     assert GROUPED["C11"] == ("{c} objects are hidden behind others",
                               "{c} objects on this slide are hidden behind others. Confidence: {conf}.")
+
+
+def _rendered_hidden(tiny_deck, make_render, pic_w):
+    """notes' rendered text at 1.2-5.2 in across, so its padded content box spans 1.15-5.25 in;
+    the picture covers it fully top to bottom and from the left up to 0.5 + pic_w in."""
+    d = _hidden_text_deck(tiny_deck, pic_w=pic_w)
+    render = make_render([[("Hidden words", (inches(1.2), inches(1.2), inches(4), inches(0.4)))]])
+    render.linked = link_spans(d, render)
+    assert render.linked
+    return d, render
+
+
+def test_just_under_hidden_threshold_is_c2_only(tiny_deck, make_render):
+    d, render = _rendered_hidden(tiny_deck, make_render, pic_w=4.52)   # about 94.4% covered
+    c2 = check_overlap(d, render)
+    assert check_hidden(d, render) == []
+    assert len(c2) == 1 and 0.94 < c2[0].measurements["coverage"] < 0.95
+
+
+def test_at_hidden_threshold_is_c11_only(tiny_deck, make_render):
+    d, render = _rendered_hidden(tiny_deck, make_render, pic_w=4.57)   # about 95.6% covered
+    c11 = check_hidden(d, render)
+    assert check_overlap(d, render) == []
+    assert len(c11) == 1 and 0.95 <= c11[0].measurements["coverage"] < 0.96
+
+
+def test_rendered_c2_and_c11_are_disjoint(tiny_deck, make_render):
+    seen = set()
+    for w in (1.0, 2.5, 4.0, 4.52, 4.55, 4.57, 4.7, 6.0):
+        d, render = _rendered_hidden(tiny_deck, make_render, pic_w=w)
+        c11 = {f.element_ids for f in check_hidden(d, render)}
+        c2 = {f.element_ids for f in check_overlap(d, render)}
+        assert not (c11 & c2), w
+        seen |= {"C11"} if c11 else set()
+        seen |= {"C2"} if c2 else set()
+    assert seen == {"C2", "C11"}   # the sweep crosses the threshold

@@ -101,3 +101,40 @@ def test_intent_helpers_match_raw_candidates(demo_deck):
         assert m == pytest.approx(c.magnitude)
         n += 1
     assert n > 0
+
+
+def _autofit_deck(tmp_path, auto_size):
+    """A text box (1-6 in across, 1-2 in down) with a picture just below it (2.05-4 in)."""
+    from io import BytesIO
+    from PIL import Image
+    from pptx import Presentation
+    from pptx.util import Inches
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    tb = s.shapes.add_textbox(Inches(1), Inches(1), Inches(5), Inches(1))
+    tb.name = "words"
+    tb.text_frame.word_wrap = True
+    tb.text_frame.text = "A long title that wraps"
+    tb.text_frame.auto_size = auto_size
+    buf = BytesIO()
+    Image.new("RGB", (100, 100), (128, 128, 128)).save(buf, "PNG")
+    buf.seek(0)
+    s.shapes.add_picture(buf, Inches(1), Inches(2.05), Inches(5), Inches(1.95)).name = "pic"
+    p = tmp_path / f"autofit-{auto_size}.pptx"
+    prs.save(p)
+    return load_deck(p)
+
+
+@pytest.mark.parametrize("auto_size, flagged", [("TEXT_TO_FIT_SHAPE", False), ("NONE", True)])
+def test_shrink_autofit_text_is_kept_inside_its_box(tmp_path, make_render, auto_size, flagged):
+    # LibreOffice may not shrink a "shrink text on overflow" box, so its rendered second line
+    # runs into the picture below; PowerPoint shrinks the text into the box, so nothing is covered.
+    from pptx.enum.text import MSO_AUTO_SIZE
+    deck = _autofit_deck(tmp_path, getattr(MSO_AUTO_SIZE, auto_size))
+    words = next(e for e in deck.slides[0].elements if e.name == "words")
+    render = _with_spans(deck, make_render([[]]),
+                         {"words": [(1.5, 1.05, 4.0, 0.6), (2.0, 1.65, 3.0, 0.6)]})
+    rect, _ = content_box(words, render.linked[words.id])
+    assert (rect.bottom <= words.bbox.bottom) == (not flagged)
+    assert bool(check_overlap(deck, render)) == flagged

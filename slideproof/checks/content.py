@@ -23,13 +23,19 @@ def _has_text(el: Element) -> bool:
 def content_box(el: Element, spans: list | None = None) -> tuple[Rect, str] | None:
     """(rect, confidence) of what the element shows, or None when it shows nothing.
 
-    With rendered text spans, a text element's box is their padded union (definite)."""
+    With rendered text spans, a text element's box is their padded union (definite). For a
+    "shrink text on overflow" box the union is kept inside the box: PowerPoint shrinks the text
+    to fit, but LibreOffice may not, so rendered text past the box is not really there (the
+    same reason C3 skips these boxes)."""
     if spans and el.kind in _TEXT_KINDS and _has_text(el):
         x0 = min(s.bbox.x for s in spans)
         y0 = min(s.bbox.y for s in spans)
         x1 = max(s.bbox.right for s in spans)
         y1 = max(s.bbox.bottom for s in spans)
-        return Rect(x0 - _PAD, y0 - _PAD, x1 - x0 + 2 * _PAD, y1 - y0 + 2 * _PAD), "definite"
+        rect = Rect(x0 - _PAD, y0 - _PAD, x1 - x0 + 2 * _PAD, y1 - y0 + 2 * _PAD)
+        if el.autofit == "shrink":
+            rect = rect.intersect(el.bbox) or rect
+        return rect, "definite"
     if el.kind in ("picture", "table", "chart") or (el.filled and not _has_text(el)):
         return el.bbox, "definite"
     if not _has_text(el):

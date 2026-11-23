@@ -24,8 +24,12 @@ def test_slide_map_offslide_and_skipped(tiny_deck):
     assert lines[2] == "1 other object that could not be read"
 
 
-def test_coverage_sentence_lists_seven():
+def test_coverage_sentence_lists_eleven():
     s = checked_sentence()
-    assert s.startswith("This version checks seven things: ")
+    assert s.startswith("This version checks eleven things: ")
     assert "overlapping objects" in s and "empty or stray objects" in s
-    assert s.endswith("Text overflow, contrast and text size are not checked yet.")
+    for item in ("text that overflows its box", "small text", "low-contrast text",
+                 "and content hidden behind other objects."):
+        assert item in s
+    assert s.endswith("Text inside charts and diagrams is not checked yet.")
+    assert "11" not in s

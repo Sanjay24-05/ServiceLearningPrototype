@@ -3,11 +3,13 @@ from __future__ import annotations
 
 CHECKS_RUN = ("objects that stick out past the slide edge", "stretched pictures",
               "overlapping objects", "low-resolution pictures", "titles out of line with the rest",
-              "stray fonts", "empty or stray objects")
-NOT_CHECKED_YET = ("text overflow", "contrast", "text size")
+              "stray fonts", "empty or stray objects", "text that overflows its box", "small text",
+              "low-contrast text", "content hidden behind other objects")
+NOT_CHECKED_YET = ("text inside charts and diagrams",)
 
 _NUMBER_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six",
-                 7: "seven", 8: "eight", 9: "nine", 10: "ten"}
+                 7: "seven", 8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve",
+                 13: "thirteen", 14: "fourteen", 15: "fifteen"}
 _OPAQUE_KINDS = ("chart", "table", "other")
 
 
@@ -16,12 +18,12 @@ def plural(n: int, singular: str, plural_form: str | None = None) -> str:
     return f"{n} {singular if n == 1 else (plural_form or singular + 's')}"
 
 
-def _join(items, comma: bool = False) -> str:
+def _join(items, comma: bool = False, word: str = "and") -> str:
     """'a and b', 'a, b and c'; with comma=True 'a, and b' / 'a, b, and c'."""
     items = list(items)
     if len(items) == 1:
         return items[0]
-    return ", ".join(items[:-1]) + (", and " if comma else " and ") + items[-1]
+    return ", ".join(items[:-1]) + (f", {word} " if comma else f" {word} ") + items[-1]
 
 
 def checks_run_items() -> list[str]:
@@ -34,7 +36,8 @@ def not_checked_sentence() -> str:
 
 
 def cannot_check_sentence() -> str:
-    return f"It does not check {_join(NOT_CHECKED_YET).replace(' and ', ' or ')} yet."
+    # Join the items with "or"; never rewrite an "and" inside an item.
+    return f"It does not check {_join(NOT_CHECKED_YET, word='or')} yet."
 
 
 def checked_sentence() -> str:

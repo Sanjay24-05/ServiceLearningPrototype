@@ -114,10 +114,11 @@ def test_report_states_what_is_checked(client, demo_deck):
     run_id = upload(client, "demo.pptx", demo_deck[0].read_bytes())
     wait_done(client, run_id)
     rep = client.get(f"/runs/{run_id}/report").text
-    assert ("This version checks seven things: objects that stick out past the slide edge, "
+    assert ("This version checks eleven things: objects that stick out past the slide edge, "
             "stretched pictures, overlapping objects, low-resolution pictures, titles out of line "
-            "with the rest, stray fonts, and empty or stray objects. Text overflow, contrast and "
-            "text size are not checked yet.") in rep
+            "with the rest, stray fonts, empty or stray objects, text that overflows its box, "
+            "small text, low-contrast text, and content hidden behind other objects. Text inside "
+            "charts and diagrams is not checked yet.") in rep
     assert rep.index("This version checks") < rep.index("<form")
 
 

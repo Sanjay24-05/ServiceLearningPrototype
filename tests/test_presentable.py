@@ -61,8 +61,10 @@ def test_about_page(client):
     for h2 in ("What it checks", "How fixes work", "Your privacy", "What it cannot do yet"):
         assert f"<h2>{h2}</h2>" in html
     assert "<li>Overlapping objects</li>" in html
-    assert "Not checked yet: text overflow, contrast and text size." in html
-    assert "<li>It does not check text overflow, contrast or text size yet.</li>" in html
+    assert "Not checked yet: text inside charts and diagrams." in html
+    assert "<li>It does not check text inside charts and diagrams yet.</li>" in html
+    assert "estimate of where text sits" not in html
+    assert html.count("charts and diagrams") == 2
 
 
 def test_about_lists_follow_coverage(client):
