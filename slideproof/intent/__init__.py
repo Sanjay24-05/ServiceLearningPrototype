@@ -91,14 +91,19 @@ def _judgeable(f, deck) -> bool:
     return False
 
 
-def _estimate_magnitude(f, deck) -> float:
+_MIN_C2_ESTIMATE = 0.05  # the C2 threshold: below it the estimate sees no overlap to judge
+
+
+def _estimate_magnitude(f, deck) -> float | None:
     """The magnitude as the model was trained on it: estimate-based, never from rendered text.
-    Shares its formulas with raw_candidates. (Only non-text C1 is judged, so the C1 branch is a guard.)"""
+    Shares its formulas with raw_candidates. None when the estimate has nothing to judge: no
+    C2 overlap, or under 5% (only rendering found it), so the finding is not judged.
+    (Only non-text C1 is judged, so the C1 branch is a guard.)"""
     if f.check_id == "C1":
         return c1_outside(deck.element(f.element_ids[0]), deck.slide_rect)
     upper, lower = (deck.element(i) for i in f.element_ids[:2])
     cov = c2_coverage(upper, lower)
-    return f.magnitude if cov is None else cov
+    return None if cov is None or cov < _MIN_C2_ESTIMATE else cov
 
 
 def judge(findings: list[Finding], deck) -> tuple[list[Finding], str | None]:
@@ -107,13 +112,14 @@ def judge(findings: list[Finding], deck) -> tuple[list[Finding], str | None]:
         return list(findings), UNAVAILABLE_NOTE
     model, _ = bundle
     try:
-        todo = [f for f in findings if _judgeable(f, deck)]
+        mags = {id(f): _estimate_magnitude(f, deck) for f in findings if _judgeable(f, deck)}
+        todo = [f for f in findings if mags.get(id(f)) is not None]
     except Exception:
         return list(findings), UNAVAILABLE_NOTE
     if not todo:
         return list(findings), None
     try:
-        vecs = {id(f): features_for(f.check_id, f.element_ids, _estimate_magnitude(f, deck), deck) for f in todo}
+        vecs = {id(f): features_for(f.check_id, f.element_ids, mags[id(f)], deck) for f in todo}
         probs = model.predict_proba([vecs[id(f)] for f in todo])[:, 1]
         judged = {id(f): (float(p), vecs[id(f)]) for f, p in zip(todo, probs)}
     except Exception:  # a broken model must never break the report

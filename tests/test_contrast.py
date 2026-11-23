@@ -4,6 +4,7 @@ import pytest
 from PIL import Image, ImageDraw
 
 from slideproof.checks import CHECKS
+from slideproof.checks.content import FURNITURE_PLACEHOLDERS
 from slideproof.checks.contrast import check_contrast, contrast_ratio
 from slideproof.describe.copy import GROUPED
 from slideproof.loader import load_deck
@@ -271,7 +272,7 @@ def test_slide_furniture_low_contrast_is_minor(tmp_path, make_render, ph_type, s
     (f,) = check_contrast(deck, render)
     assert f.check_id == "C7" and f.severity == severity and f.confidence == "definite"
     if ph_type == "OBJECT":
-        assert target.kind == "body" and target.placeholder_type not in ("FOOTER", "DATE", "SLIDE_NUMBER")
+        assert target.kind == "body" and target.placeholder_type not in FURNITURE_PLACEHOLDERS
 
 
 def test_minor_low_contrast_reads_well_and_goes_in_the_minor_list(tmp_path, make_render):
@@ -289,3 +290,87 @@ def test_minor_low_contrast_reads_well_and_goes_in_the_minor_list(tmp_path, make
     assert "visible" not in " ".join(GROUPED["C7"])
     report = prioritise([f], 1, 1.0)
     assert report.visible == [] and [g.check_id for g in report.minor] == ["C7"]
+
+
+def _patch_deck(tmp_path, patch_x):
+    """A text box (1-8 in across, 5-6 in down) with a filled rectangle above it from patch_x."""
+    from pptx import Presentation
+    from pptx.dml.color import RGBColor
+    from pptx.enum.shapes import MSO_SHAPE
+    from pptx.util import Inches
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    tb = s.shapes.add_textbox(Inches(1), Inches(5), Inches(7), Inches(1))
+    tb.name = "half"
+    tb.text_frame.text = "Another line of visible text"
+    r = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(patch_x), Inches(4.8), Inches(5), Inches(1.5))
+    r.fill.solid()
+    r.fill.fore_color.rgb = RGBColor(0x10, 0x10, 0x30)
+    p = tmp_path / "patch.pptx"
+    prs.save(p)
+    return load_deck(p)
+
+
+@pytest.mark.parametrize("patch_x, flagged", [(3.5, False), (8.5, True)])
+def test_span_covered_by_opaque_element_above_is_skipped(tmp_path, make_render, patch_x, flagged):
+    # The second span sits on navy in the picture; with the rectangle over it, it cannot be seen,
+    # so its contrast does not matter (C2 reports the cover). With the rectangle elsewhere, it counts.
+    deck = _patch_deck(tmp_path, patch_x)
+    png = _slide_png(tmp_path / "s.png", (255, 255, 255), (0, 0, 0), (1.1, 5.1, 2, 0.4),
+                     photo=((3.5, 4.8, 5, 1.5), (0x10, 0x10, 0x30)))
+    img = Image.open(png).convert("RGB")
+    d = ImageDraw.Draw(img)
+    for i in range(_px(4.0), _px(6.0), 6):
+        d.rectangle([i, _px(5.1) + 4, i + 2, _px(5.5) - 4], fill=(0, 0, 0))
+    img.save(png)
+    render = _render(make_render, png, deck, {"half": [
+        ((1.1, 5.1, 2, 0.4), (0, 0, 0), 24.0, False),
+        ((4.0, 5.1, 2, 0.4), (0, 0, 0), 24.0, False)]})
+    assert bool(check_contrast(deck, render)) == flagged
+
+
+_PIC_BG = ('<p:bg xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+           'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:bgPr>'
+           '<a:blipFill><a:stretch><a:fillRect/></a:stretch></a:blipFill><a:effectLst/></p:bgPr></p:bg>')
+_SOLID_BG = ('<p:bg xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+             'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:bgPr>'
+             '<a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>')
+
+
+def _set_bg(part_element, xml):
+    from lxml import etree
+    from pptx.oxml.ns import qn
+    csld = part_element.find(qn("p:cSld"))
+    old = csld.find(qn("p:bg"))
+    if old is not None:
+        csld.remove(old)
+    csld.insert(0, etree.fromstring(xml))
+
+
+@pytest.mark.parametrize("backgrounds, conf", [
+    ({}, "definite"),
+    ({"slide": _PIC_BG}, "likely"),
+    ({"layout": _PIC_BG}, "likely"),
+    ({"master": _PIC_BG}, "likely"),
+    ({"slide": _SOLID_BG, "layout": _PIC_BG}, "definite"),  # the slide's own background wins
+])
+def test_picture_background_makes_contrast_likely(tmp_path, make_render, backgrounds, conf):
+    from pptx import Presentation
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = inches(13.333), inches(7.5)
+    layout = prs.slide_layouts[6]
+    s = prs.slides.add_slide(layout)
+    tb = s.shapes.add_textbox(inches(1), inches(1), inches(5), inches(1))
+    tb.name = "grey"
+    tb.text_frame.text = "Grey"
+    parts = {"slide": s._element, "layout": layout._element, "master": prs.slide_master._element}
+    for where, xml in backgrounds.items():
+        _set_bg(parts[where], xml)
+    p = tmp_path / "bg.pptx"
+    prs.save(p)
+    deck = load_deck(p)
+    png = _slide_png(tmp_path / "s.png", (255, 255, 255), (0xBB, 0xBB, 0xBB), (1.1, 1.1, 3, 0.5))
+    render = _render(make_render, png, deck, {"grey": [((1.1, 1.1, 3, 0.5), (0xBB,) * 3, 12.0, False)]})
+    (f,) = check_contrast(deck, render)
+    assert f.confidence == conf

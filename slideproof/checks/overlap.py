@@ -53,7 +53,7 @@ def _lower_content(lower, render):
 def opaque_cover(lower, upper, render=None) -> tuple[float, str] | None:
     """(coverage, confidence) when an opaque upper element (a picture or filled) covers the
     lower element's content box, or None."""
-    if not (upper.kind == "picture" or upper.filled):
+    if not is_opaque(upper):
         return None
     lc = _lower_content(lower, render)
     if lc is None or lc[0].area <= 0:
@@ -69,6 +69,18 @@ def hidden_coverage(lower, upper, render=None) -> float | None:
     C2 skips exactly these pairs, so a pair is never reported twice."""
     oc = opaque_cover(lower, upper, render)
     return oc[0] if oc is not None and oc[0] >= HIDDEN_COVER else None
+
+
+def hidden_ids(deck, render=None) -> set[str]:
+    """Ids of the elements C11 reports as hidden. C3, C6 and C7 skip them: text nobody can
+    see is reported once, as hidden, not also for its overflow, size or contrast."""
+    return {lower.id for _, lower, upper in overlap_pairs(deck)
+            if hidden_coverage(lower, upper, render) is not None}
+
+
+def is_opaque(e) -> bool:
+    """A picture or a filled shape: what is under it does not show through."""
+    return e.kind == "picture" or bool(e.filled)
 
 
 def check_overlap(deck, render=None) -> list[Finding]:
@@ -88,7 +100,7 @@ def _pair(lower, upper, render=None):
     # Only covering something that shows content matters: text or a picture (or a table/chart).
     lower_is_text = _has_text(lower) and lower.kind in _TEXT_KINDS and not lower.filled
     upper_is_text = _has_text(upper) and upper.kind in _TEXT_KINDS and not upper.filled
-    if upper.kind == "picture" or upper.filled:
+    if is_opaque(upper):
         oc = opaque_cover(lower, upper, render)
         if oc is None:
             return None

@@ -4,6 +4,7 @@ from __future__ import annotations
 from math import floor
 
 from slideproof.checks.content import FURNITURE_PLACEHOLDERS as _EXEMPT  # small on purpose
+from slideproof.checks.overlap import hidden_ids
 from slideproof.findings import Finding
 
 _BODY_KINDS = ("body", "textbox")
@@ -14,11 +15,12 @@ _MINOR_PT = 18
 def check_textsize(deck, render=None) -> list[Finding]:
     if render is None or render.status != "ok":
         return []
+    hidden = hidden_ids(deck, render)  # reported once, by C11
     out: list[Finding] = []
     for s in deck.slides:
         for e in s.elements:
             spans = render.linked.get(e.id)
-            if not spans or e.placeholder_type in _EXEMPT:
+            if not spans or e.placeholder_type in _EXEMPT or e.id in hidden:
                 continue
             size = min(x.size_pt for x in spans)
             if size < _VISIBLE_PT:

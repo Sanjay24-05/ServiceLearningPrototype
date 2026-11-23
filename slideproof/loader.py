@@ -60,6 +60,21 @@ def _layout_key(slide) -> str:
         return ""
 
 
+def _picture_background(slide) -> bool:
+    """Whether the background that shows is a picture: the first <p:bg> along slide, layout,
+    master decides, and it is a picture when its fill is a blipFill."""
+    try:
+        layout = slide.slide_layout
+        chain = (slide._element, layout._element, layout.slide_master._element)
+    except Exception:
+        chain = (slide._element,)
+    for el in chain:
+        bg = el.xpath("./p:cSld/p:bg")
+        if bg:
+            return bool(bg[0].xpath("./p:bgPr/a:blipFill"))
+    return False
+
+
 def _animated_ids(slide) -> set[int]:
     try:
         return {int(v) for v in slide._element.xpath(".//p:timing//p:spTgt/@spid")}
@@ -70,7 +85,7 @@ def _animated_ids(slide) -> set[int]:
 def _load_slide(slide, index: int) -> SlideModel:
     sm = SlideModel(index=index, slide_id=slide.slide_id,
                     hidden=slide._element.get("show") in ("0", "false"), title_text=None,
-                    layout_key=_layout_key(slide))
+                    layout_key=_layout_key(slide), picture_background=_picture_background(slide))
     _walk(slide.shapes, [], None, sm, [0])
     animated = _animated_ids(slide)
     for e in sm.elements:
