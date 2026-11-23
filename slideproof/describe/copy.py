@@ -144,8 +144,15 @@ def _c9(f, c: Ctx):
             f"{main}, so this text will look out of place. Confidence: definite.")
 
 
+def _c11(f, c: Ctx):
+    lower, lower_loc = c.other(f.element_ids[1])
+    return (f"{lower} is hidden behind {c.label}",
+            f"{cap(lower)}, {lower_loc}, is almost completely covered by {c.label}, "
+            f"so your audience will not see it. Confidence: {f.confidence}.")
+
+
 COPY: dict[str, Callable] = {"C1": _c1, "C2": _c2, "C3": _c3, "C4": _c4, "C5": _c5, "C6": _c6, "C7": _c7,
-                             "C8": _c8, "C9": _c9, "C10": _c10}
+                             "C8": _c8, "C9": _c9, "C10": _c10, "C11": _c11}
 
 # (headline, full) for findings grouped by the prioritiser; {c} = count, {conf} = confidence.
 GROUPED: dict[str, tuple[str, str]] = {
@@ -170,6 +177,8 @@ GROUPED: dict[str, tuple[str, str]] = {
            "so they will look out of place. Confidence: definite."),
     "C10": ("{c} empty or stray objects",
             "{c} empty or stray objects are on this slide. Confidence: definite."),
+    "C11": ("{c} objects are hidden behind others",
+            "{c} objects on this slide are hidden behind others. Confidence: {conf}."),
 }
 
 FALLBACK = ("a layout problem was found",

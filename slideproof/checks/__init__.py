@@ -13,11 +13,12 @@ from slideproof.checks.stray import check_stray
 from slideproof.checks.textsize import check_textsize
 from slideproof.checks.titles import check_titles
 from slideproof.checks.fonts import check_fonts
+from slideproof.checks.hidden import check_hidden
 from slideproof.findings import Finding
 
 CHECKS: list[Callable] = [check_offslide, check_distortion, check_overlap,
                              check_resolution, check_stray, check_titles, check_fonts,
-                             check_overflow, check_textsize, check_contrast]
+                             check_overflow, check_textsize, check_contrast, check_hidden]
 
 
 def run_checks(deck, render) -> list[Finding]:
