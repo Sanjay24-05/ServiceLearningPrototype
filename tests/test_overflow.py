@@ -192,3 +192,42 @@ def test_real_render_autofit_boxes_not_flagged(demo_deck, tmp_path):
     b = analyse(out / "constructs_deck.pptx", tmp_path / "constructs")
     assert b.render.status == "ok"
     assert [f for f in b.findings if f.check_id == "C3"] == []
+
+
+def _off_bottom_deck(tiny_deck, lines):
+    # text box 1..6 in across, 6.5..8.5 in down on a 7.5 in slide: the bottom inch is off the page
+    return load_deck(_set_body(tiny_deck([
+        {"kind": "textbox", "name": "box", "x": 1, "y": 6.5, "w": 5, "h": 2,
+         "text": "\n".join(["Line"] * lines)}])))
+
+
+def _clipped_spans(n):
+    # LibreOffice draws no glyphs off the page: rendered lines stop at the slide bottom (7.5 in)
+    return {"box": [(1.1, 6.6 + 0.3 * i, 1.0, 0.3) for i in range(n)]}
+
+
+def test_overflow_past_slide_bottom_measured_from_estimate(tiny_deck, make_render):
+    from slideproof.checks.content import estimated_text_extent
+    deck = _off_bottom_deck(tiny_deck, 10)
+    box = deck.slides[0].elements[0]
+    render = _with_spans(deck, make_render([[]]), _clipped_spans(3))
+    (f,) = check_overflow(deck, render)
+    est = estimated_text_extent(box)
+    # ten 18 pt lines are about 3 in tall, so the text runs about 1 in past the 8.5 in bottom
+    assert est.bottom > box.frame.bottom + inches(0.9)
+    assert f.measurements["edge"] == "bottom"
+    assert f.measurements["amount"] == pytest.approx((est.bottom - box.frame.bottom) / box.frame.h)
+
+
+def test_clipped_text_that_fits_its_box_not_flagged(tiny_deck, make_render):
+    deck = _off_bottom_deck(tiny_deck, 4)  # four lines, about 1.2 in: fits the 2 in box
+    render = _with_spans(deck, make_render([[]]), _clipped_spans(3))
+    assert check_overflow(deck, render) == []
+
+
+def test_estimated_text_extent_is_not_clipped_to_the_box(tiny_deck):
+    from slideproof.checks.content import content_box, estimated_text_extent
+    deck = _off_bottom_deck(tiny_deck, 10)
+    box = deck.slides[0].elements[0]
+    assert estimated_text_extent(box).bottom > box.frame.bottom
+    assert content_box(box)[0].bottom <= box.frame.bottom  # the content box stays clipped

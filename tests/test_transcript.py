@@ -3,8 +3,8 @@
 The goldens are generated with LibreOffice deliberately disabled (the
 live_server fixture points SOFFICE_PATH at a missing file) so they are stable
 across machines. They therefore contain the "LibreOffice was not found" line
-on the index page and the "text overflow and contrast checks were skipped"
-note on the report page.
+on the index page and the "text overflow, contrast and text size checks were
+skipped" note on the report page.
 
 Set UPDATE_TRANSCRIPTS=1 to rewrite the golden files.
 """

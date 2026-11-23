@@ -177,3 +177,53 @@ def test_rendered_c2_and_c11_are_disjoint(tiny_deck, make_render):
         seen |= {"C11"} if c11 else set()
         seen |= {"C2"} if c2 else set()
     assert seen == {"C2", "C11"}   # the sweep crosses the threshold
+
+
+def _covered_text_deck(tmp_path, cover_y):
+    """A text box (1-7 in across, 1-2 in down) and a filled navy rectangle added above it at
+    cover_y: 0.5 hides the text completely; 4.5 is clear of it."""
+    from pptx.enum.text import MSO_AUTO_SIZE
+
+    def build(s):
+        tb = s.shapes.add_textbox(Inches(1), Inches(1), Inches(6), Inches(1))
+        tb.name = "notes"
+        tb.text_frame.text = "Important caption text here"
+        tb.text_frame.auto_size = MSO_AUTO_SIZE.NONE
+        tb.text_frame.word_wrap = True
+        _filled(s, 0.5, cover_y, 7, 2.6).name = "panel"
+    return _deck(tmp_path, build)
+
+
+def _covered_render(make_render, tmp_path, deck):
+    """Black 10 pt text that runs 0.6 in past the box bottom, drawn on navy."""
+    from slideproof.render.pdf import RenderedSpan
+    from slideproof.units import Rect
+    png = tmp_path / "s.png"
+    img = Image.new("RGB", (1280, 720), (255, 255, 255))
+    for x in range(96, 768):
+        for y in range(96, 260):
+            img.putpixel((x, y), (0x10, 0x10, 0x30))
+    for x in range(110, 390, 6):
+        for y in range(110, 250):
+            img.putpixel((x, y), (0, 0, 0))
+    img.save(png)
+    render = make_render([[]])
+    render.slides[0].png_path = png
+    notes = next(e for e in deck.slides[0].elements if e.name == "notes")
+    render.linked = {notes.id: [RenderedSpan("Important caption text here",
+                                             Rect(*(inches(v) for v in (1.1, 1.1, 3, 1.5))),
+                                             "A", 10.0, (0, 0, 0))]}
+    return render
+
+
+@pytest.mark.parametrize("cover_y, hidden", [(0.5, True), (4.5, False)])
+def test_hidden_text_not_reported_for_contrast_size_or_overflow(tmp_path, make_render,
+                                                                cover_y, hidden):
+    from slideproof.checks.contrast import check_contrast
+    from slideproof.checks.overflow import check_overflow
+    from slideproof.checks.textsize import check_textsize
+    deck = _covered_text_deck(tmp_path, cover_y)
+    render = _covered_render(make_render, tmp_path, deck)
+    assert bool(check_hidden(deck, render)) == hidden
+    for check in (check_contrast, check_textsize, check_overflow):
+        assert bool(check(deck, render)) == (not hidden), check.__name__

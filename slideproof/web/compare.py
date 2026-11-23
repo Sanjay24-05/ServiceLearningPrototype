@@ -80,17 +80,17 @@ def build(run_dir: Path, original, export,
           logs: dict[int, list[str]]) -> list[tuple[int, str]]:
     """Compose one image per changed slide; return [(n, alt)] in slide order.
 
-    logs maps each changed slide number to its change-log lines. Returns []
-    (and writes nothing) unless both renders have a PNG for every changed
-    slide, so the section is simply absent without LibreOffice.
+    logs maps each changed slide number to its change-log lines. A slide
+    without a PNG in both renders (a hidden slide, say) is left out. Returns
+    [] (and writes nothing) when no slide has both, so the section is simply
+    absent without LibreOffice.
     """
     clear(run_dir)
     final = export.final if export is not None else None
     if not logs or final is None:
         return []
     pairs = {n: (_png(original.render, n), _png(final.render, n)) for n in logs}
-    if any(b is None or a is None for b, a in pairs.values()):
-        return []
+    pairs = {n: (b, a) for n, (b, a) in pairs.items() if b is not None and a is not None}
     out: list[tuple[int, str]] = []
     try:
         for n in sorted(pairs):

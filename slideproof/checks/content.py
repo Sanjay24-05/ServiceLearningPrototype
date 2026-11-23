@@ -24,6 +24,17 @@ def _has_text(el: Element) -> bool:
     return bool(el.text and el.text.strip())
 
 
+def span_union(spans) -> Rect | None:
+    """The smallest rectangle around the rendered spans' boxes, or None when there are none."""
+    if not spans:
+        return None
+    x0 = min(s.bbox.x for s in spans)
+    y0 = min(s.bbox.y for s in spans)
+    x1 = max(s.bbox.right for s in spans)
+    y1 = max(s.bbox.bottom for s in spans)
+    return Rect(x0, y0, x1 - x0, y1 - y0)
+
+
 def content_box(el: Element, spans: list | None = None) -> tuple[Rect, str] | None:
     """(rect, confidence) of what the element shows, or None when it shows nothing.
 
@@ -32,13 +43,11 @@ def content_box(el: Element, spans: list | None = None) -> tuple[Rect, str] | No
     to fit, but LibreOffice may not, so rendered text past the box is not really there (the
     same reason C3 skips these boxes)."""
     if spans and el.kind in _TEXT_KINDS and _has_text(el):
-        x0 = min(s.bbox.x for s in spans)
-        y0 = min(s.bbox.y for s in spans)
-        x1 = max(s.bbox.right for s in spans)
-        y1 = max(s.bbox.bottom for s in spans)
-        rect = Rect(x0 - _PAD, y0 - _PAD, x1 - x0 + 2 * _PAD, y1 - y0 + 2 * _PAD)
+        u = span_union(spans)
+        rect = Rect(u.x - _PAD, u.y - _PAD, u.w + 2 * _PAD, u.h + 2 * _PAD)
         if el.autofit == "shrink":
-            rect = rect.intersect(el.bbox) or rect
+            # Fully outside the box: the shrunk text is somewhere in the box; take the box.
+            rect = rect.intersect(el.bbox) or el.bbox
         return rect, "definite"
     if el.kind in ("picture", "table", "chart") or (el.filled and not _has_text(el)):
         return el.bbox, "definite"
@@ -49,21 +58,28 @@ def content_box(el: Element, spans: list | None = None) -> tuple[Rect, str] | No
     return _estimated_text(el), "likely"
 
 
-def _estimated_text(el: Element) -> Rect:
+def _text_size(el: Element) -> tuple[int, int]:
+    """(width, height) the text needs, estimated from the paragraphs, not limited by the box."""
     f = el.frame
     il, it, ir, ib = el.insets
     usable_w = max(1, f.w - il - ir)
-    inner_h = max(1, f.h - it - ib)
     text_h = 0
     text_w = 0
-    for chars, size in el.paragraphs or [(len(el.text), None)]:
+    for chars, size in el.paragraphs or [(len(el.text or ""), None)]:
         size = size or _DEFAULT_SIZE
         line_w = chars * _GLYPH_EM * size * EMU_PER_PT
         lines = max(1, ceil(line_w / usable_w))
         text_h += lines * size * _LINE_SPACING * EMU_PER_PT
         text_w = max(text_w, min(usable_w, line_w))
-    text_h = min(int(text_h), inner_h)
-    text_w = int(text_w)
+    return int(text_w), int(text_h)
+
+
+def _place(el: Element, text_w: int, text_h: int) -> Rect:
+    """Where text of that size sits in the box, by alignment and anchor (unpadded)."""
+    f = el.frame
+    il, it, ir, ib = el.insets
+    usable_w = max(1, f.w - il - ir)
+    inner_h = max(1, f.h - it - ib)
     if el.align == "center":
         x = f.x + il + (usable_w - text_w) // 2
     elif el.align == "right":
@@ -76,5 +92,20 @@ def _estimated_text(el: Element) -> Rect:
         y = f.y + it + inner_h - text_h
     else:
         y = f.y + it
-    padded = Rect(x - _PAD, y - _PAD, text_w + 2 * _PAD, text_h + 2 * _PAD)
+    return Rect(x, y, text_w, text_h)
+
+
+def estimated_text_extent(el: Element) -> Rect:
+    """The estimated text, unpadded and not clipped to the box: where it would run past the box.
+    Used where rendered spans are cut off at the slide edge."""
+    return _place(el, *_text_size(el))
+
+
+def _estimated_text(el: Element) -> Rect:
+    f = el.frame
+    il, it, ir, ib = el.insets
+    inner_h = max(1, f.h - it - ib)
+    text_w, text_h = _text_size(el)
+    r = _place(el, text_w, min(text_h, inner_h))
+    padded = Rect(r.x - _PAD, r.y - _PAD, r.w + 2 * _PAD, r.h + 2 * _PAD)
     return padded.intersect(f) or padded

@@ -1,12 +1,25 @@
 """C1: element extends past the slide edge."""
 from __future__ import annotations
 
-from slideproof.checks.content import _TEXT_KINDS
+from slideproof.checks.content import _TEXT_KINDS, span_union
 from slideproof.checks.distortion import f2_fix
 from slideproof.checks.stray import is_empty_text
 from slideproof.findings import Finding, Fix
 from slideproof.fixes.geometry import pull_on_slide
 from slideproof.units import Rect
+
+_FITS_MARGIN = 91440  # 0.1 in: text this far inside a crossed slide edge is not cut (A6)
+
+
+def _text_fits(text: Rect, box: Rect, slide: Rect) -> bool:
+    """True when the rendered text stays at least 0.1 in inside every slide edge the box crosses."""
+    for crossed, gap in ((box.x < slide.x, text.x - slide.x),
+                         (box.right > slide.right, slide.right - text.right),
+                         (box.y < slide.y, text.y - slide.y),
+                         (box.bottom > slide.bottom, slide.bottom - text.bottom)):
+        if crossed and gap < _FITS_MARGIN:
+            return False
+    return True
 
 
 def check_offslide(deck, render=None) -> list[Finding]:
@@ -21,22 +34,16 @@ def check_offslide(deck, render=None) -> list[Finding]:
             spans = render.linked.get(e.id) if render else None
             text_cut = False
             if spans and e.kind in _TEXT_KINDS:
-                # Rendered text: judge where the text actually is, not the box around it.
-                b = Rect(min(x.bbox.x for x in spans), min(x.bbox.y for x in spans),
-                         max(x.bbox.right for x in spans) - min(x.bbox.x for x in spans),
-                         max(x.bbox.bottom for x in spans) - min(x.bbox.y for x in spans))
-                if b.area <= 0:
-                    b = e.bbox
-                else:
-                    text_cut = True  # provisional: confirmed below once "outside" is known
+                # LibreOffice does not draw glyphs off the page, so the rendered spans stop at
+                # the slide edge: they can only show that the text fits (A6), never how much is cut.
+                if _text_fits(span_union(spans), b, slide):
+                    continue
+                text_cut = True
             inter = b.intersect(slide)
             visible = inter.area / b.area if inter else 0.0
             outside = 1 - visible
-            if inter is None and text_cut and e.bbox.intersect(slide) is not None:
-                outside = 1.0  # box on the slide, but all its rendered text is off it
-            elif outside <= 0.02 or inter is None:
-                continue
-            text_cut = text_cut and outside > 0.02
+            if outside <= 0.02 or inter is None:
+                continue  # nearly all on the slide, or entirely off it (C10, stray objects)
             if (e.kind == "picture" and inter.area >= 0.9 * slide.area and e.z == lowest_z):
                 continue
             if is_empty_text(e):

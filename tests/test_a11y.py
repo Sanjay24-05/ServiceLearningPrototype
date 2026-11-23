@@ -1,4 +1,5 @@
 import os
+from contextlib import contextmanager
 from tests.ports import free_browser_port
 import threading
 import time
@@ -13,10 +14,13 @@ axe_mod = pytest.importorskip("axe_playwright_python.sync_playwright")
 NAV_TIMEOUT = 120_000
 
 
-@pytest.fixture
-def live_server(tmp_path, monkeypatch):
+@contextmanager
+def _serve(tmp_path, monkeypatch, render=False):
+    """A live uvicorn server on a free port. render=False points SOFFICE_PATH at a missing
+    file, so pages are stable across machines; render=True uses the real LibreOffice."""
     import uvicorn
-    monkeypatch.setenv("SOFFICE_PATH", str(tmp_path / "missing-soffice.exe"))
+    if not render:
+        monkeypatch.setenv("SOFFICE_PATH", str(tmp_path / "missing-soffice.exe"))
     port = free_browser_port()
     app = create_app(tmp_path / "runs")
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port,
@@ -32,6 +36,12 @@ def live_server(tmp_path, monkeypatch):
     finally:
         server.should_exit = True
         t.join(timeout=15)
+
+
+@pytest.fixture
+def live_server(tmp_path, monkeypatch):
+    with _serve(tmp_path, monkeypatch) as url:
+        yield url
 
 
 @pytest.fixture
@@ -169,24 +179,10 @@ def test_probably_intentional_report_has_no_serious_axe_violations(live_server, 
 
 
 @pytest.fixture
-def live_server_render(tmp_path):
+def live_server_render(tmp_path, monkeypatch):
     """A live server that uses the real LibreOffice, for the before/after view."""
-    import uvicorn
-    port = free_browser_port()
-    app = create_app(tmp_path / "runs")
-    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port,
-                                           log_level="warning"))
-    t = threading.Thread(target=server.run, daemon=True)
-    try:
-        t.start()
-        end = time.time() + 20
-        while not server.started and time.time() < end:
-            time.sleep(0.05)
-        assert server.started, "uvicorn did not start"
-        yield f"http://127.0.0.1:{port}"
-    finally:
-        server.should_exit = True
-        t.join(timeout=15)
+    with _serve(tmp_path, monkeypatch, render=True) as url:
+        yield url
 
 
 @pytest.mark.soffice

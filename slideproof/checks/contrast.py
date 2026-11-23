@@ -7,12 +7,14 @@ import numpy as np
 from PIL import Image
 
 from slideproof.checks.content import FURNITURE_PLACEHOLDERS
+from slideproof.checks.overlap import hidden_ids, is_opaque
 from slideproof.findings import Finding
 
 _BG_DISTANCE = 60     # RGB distance from the text colour for a pixel to count as background
 _MIN_BG_PIXELS = 20   # fewer background pixels than this: measure the ring outside the box instead
 _RING_PX = 3          # width of that ring in pixels
 _SAME_COLOUR = 10     # ring this close to the text colour: no measurable difference, skip the span
+_COVERED = 0.5        # a span at least this much under an opaque element above cannot be seen
 
 
 def _channel(c: int) -> float:
@@ -69,19 +71,37 @@ def _background(pixels: np.ndarray, sx: float, sy: float, span):
 
 
 def _over_picture(slide, el, span) -> bool:
+    """Whether a picture is behind the span: the slide's background, or a picture below it."""
+    if slide.picture_background:
+        return True
     return any(p.kind == "picture" and p.z < el.z and p.bbox.intersect(span.bbox) is not None
                for p in slide.elements)
+
+
+def _covered(slide, el, span) -> bool:
+    """The span is mostly under a picture or filled shape above its element: what shows there is
+    that element, not the text (C2 or C11 reports the cover)."""
+    area = span.bbox.area
+    if area <= 0:
+        return False
+    for u in slide.elements:
+        if u.z > el.z and is_opaque(u):
+            inter = u.bbox.intersect(span.bbox)
+            if inter is not None and inter.area >= _COVERED * area:
+                return True
+    return False
 
 
 def check_contrast(deck, render=None) -> list[Finding]:
     if render is None or render.status != "ok":
         return []
+    hidden = hidden_ids(deck, render)  # reported once, by C11
     out: list[Finding] = []
     for s, rendered in zip(deck.slides, render.slides):
         if rendered is None:
             continue
         elements = [(e, render.linked.get(e.id)) for e in s.elements]
-        elements = [(e, spans) for e, spans in elements if spans]
+        elements = [(e, spans) for e, spans in elements if spans and e.id not in hidden]
         if not elements:
             continue
         with Image.open(rendered.png_path) as img:  # once per slide
@@ -90,6 +110,8 @@ def check_contrast(deck, render=None) -> list[Finding]:
         for e, spans in elements:
             worst = None  # (ratio / need, ratio, need, span)
             for span in spans:
+                if _covered(s, e, span):
+                    continue
                 bg = _background(pixels, sx, sy, span)
                 if bg is None:
                     continue
