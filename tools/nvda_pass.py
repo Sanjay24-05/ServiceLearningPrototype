@@ -64,5 +64,12 @@ with sync_playwright() as p:
     phase("7. Enter on button: progress page, then result page loads", m)
     for i in range(4):
         m = mark(); pg.keyboard.press("Tab"); time.sleep(2.5); phase(f"8.{i+1} Tab on result", m)
+    summary = pg.locator("summary", has_text="Show the changed slides")
+    if summary.count():
+        m = mark(); summary.focus(); time.sleep(2.5); phase("9. Focus the before/after summary", m)
+        m = mark(); pg.keyboard.press("Enter"); time.sleep(3); phase("10. Enter expands it", m)
+        print("\n### 11. Image alt text (accessibility tree)")
+        for alt in pg.locator("details img").evaluate_all("els => els.map(e => e.alt)"):
+            print("  ", alt)
     b.close()
 server.should_exit = True
