@@ -18,6 +18,7 @@ from slideproof.describe.coverage import (INTENT_COVERAGE, cannot_check_sentence
                                           checks_run_items, not_checked_sentence, plural,
                                           unchecked_sentence)
 from slideproof.verify import export_and_verify
+from slideproof.web import compare
 from slideproof.web.runs import Run, RunStore, startup_check
 
 HERE = Path(__file__).parent
@@ -61,6 +62,17 @@ def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
                         "layout": slide_map(deck.slides[f.slide_index - 1], deck),
                         "preticked": not intentional})
         return out
+
+    def change_logs(run: Run, ex) -> dict[int, list[str]]:
+        """Change-log lines of the applied fixes, by slide number."""
+        findings = {f.fix.fix_id: f for f in run.analysis.findings if f.fix}
+        logs: dict[int, list[str]] = {}
+        for fx in ex.applied:
+            f = findings[fx.fix_id]
+            line = describe(f, run.analysis.deck).change_log
+            if line:
+                logs.setdefault(f.slide_index, []).append(line)
+        return logs
 
     def _start_analysis(run: Run, path: Path):
         def job(progress):
@@ -170,8 +182,13 @@ def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
         out = run.dir / "output" / f"{Path(run.filename).stem} (checked).pptx"
 
         def job(progress):
-            run.export = export_and_verify(original, selected, out, run.dir,
-                                           progress)
+            run.compare = []
+            compare.clear(run.dir)
+            ex = export_and_verify(original, selected, out, run.dir, progress)
+            progress("Preparing the before and after images…")
+            run.compare = compare.build(run.dir, original, ex,
+                                        change_logs(run, ex))
+            run.export = ex
             return f"/runs/{run.id}/result"
 
         store.start(run, job, "Applying fixes…", clear_export=True)
@@ -194,7 +211,22 @@ def create_app(runs_root: Path, extra_hosts: tuple[str, ...] = ()) -> FastAPI:
                    for fx in ex.applied]
         return page(request, "result.html", run=run, ex=ex, rolled=rolled,
                     changes=[c for c in changes if c],
+                    compare=[(f"/runs/{run.id}/compare/{n}.png", alt)
+                             for n, alt in run.compare],
                     stem=Path(run.filename).stem, none_selected=False)
+
+    @app.get("/runs/{run_id}/compare/{n}.png")
+    def compare_image(request: Request, run_id: str, n: str):
+        run = find(run_id)
+        num = compare.parse_n(n)
+        if run is None or run.export is None or num is None:
+            return error(request, "This image is not available.", 404)
+        if num not in {m for m, _ in run.compare}:
+            return error(request, "This image is not available.", 404)
+        path = compare.image_path(run.dir, num)
+        if not path.is_file():
+            return error(request, "This image is not available.", 404)
+        return FileResponse(path, media_type="image/png")
 
     @app.get("/runs/{run_id}/download")
     def download(request: Request, run_id: str):

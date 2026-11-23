@@ -5,7 +5,7 @@ import os
 import shutil
 import threading
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal
 
@@ -30,6 +30,7 @@ class Run:
     export: ExportResult | None = None
     error: str | None = None
     job_active: bool = False
+    compare: list[tuple[int, str]] = field(default_factory=list)
 
 
 class RunStore:
