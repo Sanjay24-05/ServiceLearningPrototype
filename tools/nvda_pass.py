@@ -8,11 +8,12 @@ Usage (from the repo root, NVDA must already be running with speech logging):
 Keys are sent through the browser (not the OS), so NVDA's own quick-navigation keys (H etc.) are not
 exercised; page-load announcements, focus announcements and live status updates are.
 """
-import re, socket, sys, threading, time
+import socket, sys, threading, time
 from pathlib import Path
 import uvicorn
 from playwright.sync_api import sync_playwright
 from slideproof.web.app import create_app
+from tools.nvda_log import spoken as spoken_lines
 
 LOG = Path(sys.argv[1]); DECK = Path(sys.argv[2]); RUNS = Path(sys.argv[3])
 BROWSER_UNSAFE_PORTS = {5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6697, 10080}
@@ -35,14 +36,7 @@ while not server.started: time.sleep(0.1)
 BASE = f"http://127.0.0.1:{port}"
 
 def mark(): return LOG.stat().st_size
-def spoken(start):
-    text = LOG.read_bytes()[start:].decode("utf-8", "replace")
-    out = []
-    for m in re.finditer(r"Speaking \[(.*)\]", text):
-        parts = [a or b for a, b in re.findall(r"""'([^']*)'|"([^"]*)\"""", m.group(1))]
-        line = " | ".join(p for p in parts if p not in ("en_US",))
-        if line: out.append(line)
-    return out
+def spoken(start): return spoken_lines(LOG.read_bytes()[start:].decode("utf-8", "replace"))
 def phase(name, start):
     print(f"\n### {name}"); [print("  ", l) for l in spoken(start)]
 
