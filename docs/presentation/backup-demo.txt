@@ -1,0 +1,91 @@
+### Start page
+Check slide layout – Slide Proof
+main landmark | heading | level 1 | Check slide layout
+Your file stays on this computer. 
+
+### Focus: Try the demo presentation
+main landmark | section | Try the demo presentation | button
+
+### Enter: checking, then the report
+Loading page
+Loading complete
+Checking demo_deck.pptx – Slide Proof
+main landmark | heading | level 1 | Checking demo_deck.pptx
+Reading slides…
+content info landmark | link | How Slide Proof works
+Rendering slides… 
+Loading page
+Loading complete
+demo_deck.pptx – 8 visible problems – Slide Proof | document
+main landmark
+main landmark | Report for demo_deck.pptx | heading | level 1
+demo_deck.pptx – 8 visible problems – Slide Proof
+heading | level 1 | Report for demo_deck.pptx
+8 slides checked. 8 visible problems on 6 slides, 2 minor. 
+This version checks eleven things: objects that stick out past the slide edge, stretched pictures, overlapping objects, low-resolution pictures, titles out of line with the rest, stray fonts, empty or stray objects, text that overflows its box, small text, low-contrast text, and content hidden behind other objects. 
+Text inside charts and diagrams is not checked yet. 
+
+### Tab: first finding and its fix
+section | Slide 4, "Our team": picture "Team photo" is stretched wider than its natural shape | region | Fix for this problem | grouping | Restore its natural shape, keeping it centred. Safe fix. | check box | checked
+
+### Focus: Create corrected copy
+Create corrected copy | button
+
+### Enter: fixing, re-checking, result
+Loading page
+Loading complete
+Checking demo_deck.pptx – Slide Proof
+main landmark | heading | level 1 | Checking demo_deck.pptx
+Applying fixes…
+content info landmark | link | How Slide Proof works
+Checking the corrected copy: Rendering slides… 
+Loading page
+Loading complete
+Corrected copy created – Slide Proof | document
+main landmark
+main landmark | Corrected copy created | heading | level 1
+Corrected copy created – Slide Proof
+heading | level 1 | Corrected copy created
+4 fixes applied. 4 problems resolved. 0 new problems among the problems this version checks.
+heading | level 2 | Changes made
+list | with 4 items | • Slide 4: picture "Team photo" restored to its natural shape; it is now narrower and still centred.
+
+### Tab: Show the changed slides
+Show the changed slides | button | collapsed
+
+### Enter: the before and after pictures
+expanded
+
+### The AI part: choose the school-logo deck
+Loading page
+Loading complete
+Check slide layout – Slide Proof
+main landmark | section | button | Try the demo presentation | out of section
+content info landmark | link | How Slide Proof works
+
+### Enter: checking, then the report
+form landmark
+button
+Loading page
+Loading complete
+Checking school_logo_deck.pptx – Slide Proof
+main landmark | heading | level 1 | Checking school_logo_deck.pptx
+Reading slides…
+content info landmark | link | How Slide Proof works
+Rendering slides… 
+Loading page
+school_logo_deck.pptx – 1 visible problem – Slide Proof | document
+main landmark
+Loading complete
+main landmark | Report for school_logo_deck.pptx | heading | level 1
+school_logo_deck.pptx – 1 visible problem – Slide Proof
+heading | level 1 | Report for school_logo_deck.pptx
+6 slides checked. 1 visible problem on 1 slide, 0 minor, 6 probably intentional. 
+This version checks eleven things: objects that stick out past the slide edge, stretched pictures, overlapping objects, low-resolution pictures, titles out of line with the rest, stray fonts, empty or stray objects, text that overflows its box, small text, low-contrast text, and content hidden behind other objects. 
+Text inside charts and diagrams is not checked yet. 
+
+### The real mistake stays a visible problem
+section | Slide 4, "Class trip": picture "Class trip photo" sticks out past the right edge | region | Fix for this problem | grouping | Move it back onto the slide. Safe fix. | check box | checked
+
+### The six logos: Probably intentional, fixes not ticked
+Slide 1, "Welcome": picture "School logo" sticks out past the left and top edges | region | Fix for this problem | grouping | Move it back onto the slide. Safe fix. | check box | not checked

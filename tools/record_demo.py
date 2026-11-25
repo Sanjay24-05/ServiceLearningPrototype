@@ -2,6 +2,8 @@
 
 Start NVDA with speech logging first (see tools/nvda_pass.py), then, from the repo root:
     .venv/Scripts/python tools/record_demo.py <nvda log> docs/presentation/backup-demo.webm
+To rebuild the video later with the words saved from that run (no NVDA needed):
+    .venv/Scripts/python tools/record_demo.py --replay docs/presentation/backup-demo.txt <out.webm>
 Leave the mouse and keyboard alone while it runs: whatever NVDA says becomes a caption. Sound can
 be muted. The captions are what NVDA logged; what was said is also saved next to the video as .txt.
 """
@@ -18,7 +20,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from tools.nvda_log import spoken  # noqa: E402
 
-MAX_CAPTION = 620
+MAX_CAPTION = 560
+NOISE = {"Loading page", "Loading complete", "main landmark"}
 
 # Draws every frame on a canvas in real time while Edge's MediaRecorder encodes it.
 ENCODE_JS = """async (frames) => {
@@ -55,11 +58,23 @@ ENCODE_JS = """async (frames) => {
 }"""
 
 
-def caption(lines: list[str]) -> str:
-    """What NVDA said, without the browser window's own title; shortened to fit the band."""
-    kept = [l.replace(" | ", ", ").strip() for l in lines if "Microsoft" not in l]
-    text = " … ".join(kept)
-    return text if len(text) <= MAX_CAPTION else text[:MAX_CAPTION - 1].rstrip() + "…"
+def captions(lines: list[str]) -> list[str]:
+    """What NVDA said, without the browser window's own title and page-loading noise, split into
+    pieces that each fit the caption band. Nothing else is left out."""
+    kept = [l.replace(" | ", ", ").strip() for l in lines
+            if "Microsoft" not in l and l not in NOISE]
+    pieces = [""]
+    for word in " … ".join(kept).split():
+        if len(pieces[-1]) + 1 + len(word) > MAX_CAPTION:
+            pieces.append("")
+        pieces[-1] = f"{pieces[-1]} {word}".strip()
+    return pieces
+
+
+def read_saved(text: str) -> list[list[str]]:
+    """The spoken lines of each step, from the .txt saved next to a video."""
+    return [[l for l in block.splitlines()[1:] if l]
+            for block in ("\n" + text).split("\n### ")[1:]]
 
 
 def seconds_for(text: str) -> float:
@@ -72,7 +87,7 @@ def encode(page, frames: list[dict], out: Path) -> None:
     out.write_bytes(base64.b64decode(page.evaluate(ENCODE_JS, frames)))
 
 
-def run(log: Path, out: Path) -> None:
+def run(log: Path, out: Path, replay: list[list[str]] | None = None) -> None:
     import uvicorn
     from playwright.sync_api import sync_playwright
     from slideproof.web.app import create_app
@@ -96,15 +111,18 @@ def run(log: Path, out: Path) -> None:
         pg.bring_to_front()
 
         def step(name, action, wait):
-            start = log.stat().st_size
+            start = 0 if replay is not None else log.stat().st_size
             action()
             time.sleep(wait)
-            lines = spoken(log.read_bytes()[start:].decode("utf-8", "replace"))
-            text = caption(lines)
+            if replay is not None:
+                lines = replay.pop(0)
+            else:
+                lines = spoken(log.read_bytes()[start:].decode("utf-8", "replace"))
             png = "data:image/png;base64," + base64.b64encode(pg.screenshot()).decode()
-            frames.append({"step": name, "caption": text or "(NVDA is silent)", "png": png,
-                           "seconds": seconds_for(text)})
-            words.extend([f"### {name}", *lines, ""])
+            for text in captions(lines):
+                frames.append({"step": name, "caption": text or "(NVDA is silent)", "png": png,
+                               "seconds": seconds_for(text)})
+            words.extend([f"### {name}", *(l for l in lines if "Microsoft" not in l), ""])
 
         def press_and_wait(key, url):
             pg.keyboard.press(key)
@@ -146,13 +164,19 @@ def run(log: Path, out: Path) -> None:
         encode(pg, frames, out)
         b.close()
     server.should_exit = True
-    out.with_suffix(".txt").write_text("\n".join(words), encoding="utf-8")
+    if replay is None:
+        out.with_suffix(".txt").write_text("\n".join(words), encoding="utf-8")
     print(f"{out} ({out.stat().st_size // 1024} KB, {sum(f['seconds'] for f in frames):.0f} s)")
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 4 and sys.argv[1] == "--replay":
+        saved = Path(sys.argv[2])
+        run(saved, Path(sys.argv[3]), read_saved(saved.read_text(encoding="utf-8")))
+        raise SystemExit(0)
     if len(sys.argv) != 3:
-        print("Usage: python tools/record_demo.py <nvda log> <out.webm>")
+        print("Usage: python tools/record_demo.py <nvda log> <out.webm>\n"
+              "       python tools/record_demo.py --replay <saved.txt> <out.webm>")
         raise SystemExit(2)
     if not Path(sys.argv[1]).exists():
         print(f"NVDA log not found: {sys.argv[1]}. Start NVDA with logging first "

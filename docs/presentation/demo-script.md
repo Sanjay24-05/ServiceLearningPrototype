@@ -7,7 +7,7 @@
 | `slide_proof_talk.pptx` | The six slides; what to say is also in the notes |
 | `demo_deck.pptx` | Opened in PowerPoint for the opening (made in step 1) |
 | `school_logo_deck.pptx` | The AI part |
-| `backup-demo.webm` | Silent, captioned video of the whole live part |
+| `backup-demo.webm` | Silent, captioned slideshow-style video of the live part (3 min 45 s). Captions: NVDA's logged words from a real run on 2026-11-25, without page-loading noise. Screens were retaken afterwards. Words: `backup-demo.txt` |
 | `before-after.png`, `demo-slide-3.png` | Pictures to show if something fails |
 
 ## Before you present

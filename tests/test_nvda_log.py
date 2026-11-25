@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from tools.nvda_log import spoken
-from tools.record_demo import caption, seconds_for
+from tools.record_demo import MAX_CAPTION, captions, read_saved, seconds_for
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -16,10 +16,20 @@ def test_spoken_reads_both_quote_styles_and_drops_the_language():
     assert spoken(log) == ["main landmark | It isn't covered | button"]
 
 
-def test_caption_drops_the_browser_window_title_and_long_text_is_shortened():
-    assert caption(["Slide Proof - Profile 1 - Microsoft​ Edge | window", "heading | level 1"]) \
-        == "heading, level 1"
-    assert len(caption(["word " * 400])) <= 620
+def test_captions_drop_the_window_title_and_loading_noise():
+    assert captions(["Slide Proof - Profile 1 - Microsoft\u200b Edge | window", "Loading page",
+                     "main landmark", "heading | level 1"]) == ["heading, level 1"]
+    assert captions([]) == [""]
+
+
+def test_long_captions_are_split_not_cut():
+    pieces = captions(["word " * 400 + "6 probably intentional."])
+    assert len(pieces) > 1 and all(len(p) <= MAX_CAPTION for p in pieces)
+    assert " ".join(pieces).split() == ["word"] * 400 + ["6", "probably", "intentional."]
+
+
+def test_saved_words_are_read_back_by_step():
+    assert read_saved("### One\na | b\nc\n\n### Two\n\n### Three\nd\n") == [["a | b", "c"], [], ["d"]]
 
 
 def test_frames_stay_up_long_enough_to_read():
