@@ -58,7 +58,7 @@ assert [(f.check_id, f.slide_index) for f in report.visible] == [("C1", 4)]
 2. "It sounds fine. It isn't.": picture of demo slide 3 rendered
 3. "Who it is for": blind presenters using NVDA or JAWS; check your own slides, alone, before you present; files stay on your computer
 4. "Mistake or on purpose?": a small on-device model, 21 features, never hides anything, explains its reason
-5. "What we measured": 97.6% and 94.3% with their meanings; "120 synthetic decks; tested on decks it never saw; mildly optimistic"; "Untested on real-world decks. No blind user has tested it yet."
+5. "What we measured": 97.6% and 94.3% with their meanings; "120 synthetic decks, each tested while held out; mildly optimistic"; "Untested on real-world decks. No blind user has tested it yet."
 6. "What comes next": remaining fixes, JAWS, testing with blind users; "Can you introduce us to testers?"
 
 - [ ] **Step 1: Failing tests:** 6 slides with those exact titles; every run ≥ 24 pt; every picture has alt text; every slide has speaker notes; (soffice) `analyse(...)` gives `report.visible == [] and report.minor == []`.

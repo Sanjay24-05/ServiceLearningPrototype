@@ -28,8 +28,9 @@ SLIDES = [
     ("Slide Proof", ["Checking slide layouts without sight"],
      "Slide Proof lets a blind presenter check how their slides look, on their own, before they present."),
     ("It sounds fine. It isn't.", [],
-     "A screen reader reads every word on this slide. Nothing tells the presenter that the chart "
-     "covers the bullets."),
+     "Reading the text gives no hint that the chart covers the ends of three bullets. NVDA can report "
+     "overlaps in points, shape by shape, if you select each shape. It does not check the whole deck, "
+     "or say what the audience loses."),
     ("Who it is for", ["Blind presenters who use NVDA or JAWS",
                        "Check your own slides, alone, before you present",
                        "Files stay on your computer",
@@ -44,9 +45,9 @@ SLIDES = [
      "slip. The model sorts them; the presenter decides."),
     ("What we measured", ["97.6% of planted mistakes stayed in the main lists",
                           "94.3% of deliberate designs were recognised",
-                          "120 synthetic decks; tested on decks it never saw; mildly optimistic",
+                          "120 synthetic decks, each tested while held out; mildly optimistic",
                           "Untested on real-world decks. No blind user has tested it yet."],
-     "14 of 593 planted mistakes were wrongly moved. A moved finding is still listed, with its fix "
+     "Of the findings the app judges, 14 of 593 planted mistakes were wrongly moved. A moved finding is still listed, with its fix "
      "unticked. The threshold and model were chosen on the same predictions, so the figures are "
      "mildly optimistic."),
     ("What comes next", ["The remaining fixes", "Testing with JAWS", "Testing with blind users",

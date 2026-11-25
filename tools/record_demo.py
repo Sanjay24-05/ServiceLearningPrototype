@@ -4,8 +4,9 @@ Start NVDA with speech logging first (see tools/nvda_pass.py), then, from the re
     .venv/Scripts/python tools/record_demo.py <nvda log> docs/presentation/backup-demo.webm
 To rebuild the video later with the words saved from that run (no NVDA needed):
     .venv/Scripts/python tools/record_demo.py --replay docs/presentation/backup-demo.txt <out.webm>
-Leave the mouse and keyboard alone while it runs: whatever NVDA says becomes a caption. Sound can
+Turn on Do Not Disturb and leave the mouse and keyboard alone: whatever NVDA says becomes a caption. Sound can
 be muted. The captions are what NVDA logged; what was said is also saved next to the video as .txt.
+The AI part is also saved on its own as <out>-ai.webm.
 """
 from __future__ import annotations
 
@@ -21,6 +22,9 @@ sys.path.insert(0, str(ROOT))
 from tools.nvda_log import spoken  # noqa: E402
 
 MAX_CAPTION = 560
+STEPS = 12
+AI_STEP = "The AI part: choose the school-logo deck"
+NO_SPEECH = "NVDA said nothing. Is it running and logging to this file? Nothing was saved."
 NOISE = {"Loading page", "Loading complete", "main landmark"}
 
 # Draws every frame on a canvas in real time while Edge's MediaRecorder encodes it.
@@ -58,11 +62,15 @@ ENCODE_JS = """async (frames) => {
 }"""
 
 
+def is_window_title(line: str) -> bool:
+    return "Microsoft" in line and "Edge" in line and line.endswith("| window")
+
+
 def captions(lines: list[str]) -> list[str]:
     """What NVDA said, without the browser window's own title and page-loading noise, split into
     pieces that each fit the caption band. Nothing else is left out."""
     kept = [l.replace(" | ", ", ").strip() for l in lines
-            if "Microsoft" not in l and l not in NOISE]
+            if not is_window_title(l) and l not in NOISE]
     pieces = [""]
     for word in " … ".join(kept).split():
         if len(pieces[-1]) + 1 + len(word) > MAX_CAPTION:
@@ -88,19 +96,34 @@ def encode(page, frames: list[dict], out: Path) -> None:
 
 
 def run(log: Path, out: Path, replay: list[list[str]] | None = None) -> None:
+    with tempfile.TemporaryDirectory(prefix="slideproof-rec-", ignore_cleanup_errors=True) as tmp:
+        _run(log, out, replay, Path(tmp))
+
+
+def _run(log: Path, out: Path, replay: list[list[str]] | None, tmp: Path) -> None:
     import uvicorn
-    from playwright.sync_api import sync_playwright
     from slideproof.web.app import create_app
     from tests.ports import free_browser_port
 
     port = free_browser_port()
     server = uvicorn.Server(uvicorn.Config(
-        create_app(Path(tempfile.mkdtemp(prefix="slideproof-rec-"))),
+        create_app(tmp),
         host="127.0.0.1", port=port, log_level="warning"))
     threading.Thread(target=server.run, daemon=True).start()
+    deadline = time.time() + 30
     while not server.started:
+        if time.time() > deadline:
+            raise SystemExit("Slide Proof did not start.")
         time.sleep(0.1)
-    base = f"http://127.0.0.1:{port}"
+    try:
+        _record(f"http://127.0.0.1:{port}", log, out, replay)
+    finally:
+        server.should_exit = True
+
+
+def _record(base: str, log: Path, out: Path, replay: list[list[str]] | None) -> None:
+    from playwright.sync_api import sync_playwright
+
     frames: list[dict] = []
     words: list[str] = []
 
@@ -118,11 +141,14 @@ def run(log: Path, out: Path, replay: list[list[str]] | None = None) -> None:
                 lines = replay.pop(0)
             else:
                 lines = spoken(log.read_bytes()[start:].decode("utf-8", "replace"))
+                if not frames and not lines:
+                    print(NO_SPEECH)
+                    raise SystemExit(2)
             png = "data:image/png;base64," + base64.b64encode(pg.screenshot()).decode()
             for text in captions(lines):
                 frames.append({"step": name, "caption": text or "(NVDA is silent)", "png": png,
                                "seconds": seconds_for(text)})
-            words.extend([f"### {name}", *(l for l in lines if "Microsoft" not in l), ""])
+            words.extend([f"### {name}", *(l for l in lines if not is_window_title(l)), ""])
 
         def press_and_wait(key, url):
             pg.keyboard.press(key)
@@ -146,7 +172,7 @@ def run(log: Path, out: Path, replay: list[list[str]] | None = None) -> None:
             png = "data:image/png;base64," + base64.b64encode(pg.screenshot()).decode()
             frames.append({"step": f"Picture {i}: its description (from the page, not spoken here)",
                            "caption": alt, "png": png, "seconds": seconds_for(alt)})
-        step("The AI part: choose the school-logo deck", lambda: pg.goto(base + "/"), 6)
+        step(AI_STEP, lambda: pg.goto(base + "/"), 6)
         pg.set_input_files("#file", str(ROOT / "docs" / "presentation" / "school_logo_deck.pptx"))
         pg.get_by_role("button", name="Check slides").focus()
         step("Enter: checking, then the report", lambda: press_and_wait("Enter", "**/report"), 35)
@@ -161,9 +187,10 @@ def run(log: Path, out: Path, replay: list[list[str]] | None = None) -> None:
             h.evaluate("e => e.scrollIntoView()")
 
         step("The six logos: Probably intentional, fixes not ticked", show_intentional, 5)
+        first_ai = next(i for i, f in enumerate(frames) if f["step"] == AI_STEP)
         encode(pg, frames, out)
+        encode(pg, frames[first_ai:], out.with_name(out.stem + "-ai.webm"))
         b.close()
-    server.should_exit = True
     if replay is None:
         out.with_suffix(".txt").write_text("\n".join(words), encoding="utf-8")
     print(f"{out} ({out.stat().st_size // 1024} KB, {sum(f['seconds'] for f in frames):.0f} s)")
@@ -172,7 +199,11 @@ def run(log: Path, out: Path, replay: list[list[str]] | None = None) -> None:
 if __name__ == "__main__":
     if len(sys.argv) == 4 and sys.argv[1] == "--replay":
         saved = Path(sys.argv[2])
-        run(saved, Path(sys.argv[3]), read_saved(saved.read_text(encoding="utf-8")))
+        steps = read_saved(saved.read_text(encoding="utf-8")) if saved.exists() else []
+        if len(steps) != STEPS:
+            print(f"Cannot replay {saved}: expected the {STEPS} saved steps, found {len(steps)}.")
+            raise SystemExit(2)
+        run(saved, Path(sys.argv[3]), steps)
         raise SystemExit(0)
     if len(sys.argv) != 3:
         print("Usage: python tools/record_demo.py <nvda log> <out.webm>\n"

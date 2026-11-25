@@ -40,7 +40,7 @@ def test_talk_deck_text_pictures_and_notes(tmp_path):
 def test_talk_deck_states_the_limits(tmp_path):
     prs = Presentation(str(build_talk_deck(tmp_path / "talk.pptx")))
     text = " ".join(sh.text_frame.text for sh in prs.slides[4].shapes if sh.has_text_frame)
-    for needed in ("97.6%", "94.3%", "120 synthetic decks", "mildly optimistic",
+    for needed in ("97.6%", "94.3%", "120 synthetic decks", "mildly optimistic", "held out",
                    "Untested on real-world decks", "No blind user has tested it yet."):
         assert needed in text
 
